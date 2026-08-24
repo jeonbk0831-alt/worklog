@@ -235,7 +235,7 @@ body.dragging .scroll{overflow:hidden}
         <span><i class="dot trip"></i>출장</span>
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
-        <span class="ver">v1.2 · 2026.08.24</span>
+        <span class="ver">v1.3 · 2026.08.24</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -324,6 +324,13 @@ function catOf(t){return t.cat||'업무'}
 function rank(t){if(t.done)return 3;var c=catOf(t);return c==='출장'?0:c==='회의'?1:2}
 function crank(t){if(t.done)return 3;var c=catOf(t);return c==='출장'?0:c==='회의'?1:2}
 function firstline(s){return (s||'').trim().split('\n')[0]}
+function timeVal(t){
+  var m=/^(\d{1,2}):?(\d{0,2})$/.exec((t.time||'').trim());
+  if(!m)return 99999;
+  var h=parseInt(m[1],10), mi=m[2]?parseInt(m[2],10):0;
+  if(isNaN(h))return 99999;
+  return h*60+(isNaN(mi)?0:mi);
+}
 
 function visible(d){
   return db.tasks.filter(function(t){
@@ -352,7 +359,9 @@ function renderCal(){
     c.className='cell'+((ds in HOLIDAYS)?' holi':w===0?' sun':w===6?' sat':'')
       +(ds===today()?' today':'');
     var evs=dueOn(ds).filter(function(t){return !t.done});
-    evs.sort(function(a,b){return crank(a)-crank(b)});
+    evs.sort(function(a,b){
+      return timeVal(a)-timeVal(b)||crank(a)-crank(b)||a.seq-b.seq;
+    });
     var evh='',hasWork=false;
     evs.forEach(function(t){
       var k=catOf(t);
