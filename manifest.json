@@ -1,6 +1,6 @@
 {
-  "name": "업무노트",
-  "short_name": "업무노트",
+  "name": "K-note",
+  "short_name": "K-note",
   "description": "날짜별 업무일지와 추진과제 관리",
   "start_url": "./index.html",
   "scope": "./",

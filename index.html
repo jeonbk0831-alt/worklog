@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>업무노트</title>
+<title>K-note</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#3AB3FA">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="업무노트">
+<meta name="apple-mobile-web-app-title" content="K-note">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <style>
 :root{
@@ -252,7 +252,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
     <button class="ico hide" id="prevD" aria-label="전날">
       <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
-    <div class="ttl" id="title">업무노트</div>
+    <div class="ttl" id="title">K-note</div>
     <button class="ico hide" id="nextD" aria-label="다음날">
       <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
     </button>
@@ -471,7 +471,7 @@ function applyView(v,arg){
 
   if(v==='home'){
     show.lspace=true;show.rspace=true;
-    tt.textContent='업무노트';
+    tt.textContent='K-note';
   }else if(v==='cal'){
     show.back=true;show.todayBtn=true;
     tt.textContent='업무일지';
@@ -939,7 +939,7 @@ $('etc').addEventListener('input',function(){db.notes[curDate]=this.value;save()
 $('expBtn').addEventListener('click',function(){
   var b=new Blob([JSON.stringify(db)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(b);
-  a.download='업무노트_백업_'+today()+'.json';a.click();
+  a.download='K-note_백업_'+today()+'.json';a.click();
 });
 $('impBtn').addEventListener('click',function(){$('fp').click()});
 $('fp').addEventListener('change',function(e){

@@ -3,7 +3,7 @@
    - 인터넷이 없으면 저장해둔 것으로 실행
    - 적어둔 내용은 여기와 무관하며 지워지지 않음 */
 
-const CACHE = 'worknote-v3';
+const CACHE = 'knote-v4';
 const ASSETS = [
   './',
   './index.html',
