@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>업무일지</title>
+<title>업무노트</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#3AB3FA">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="업무일지">
+<meta name="apple-mobile-web-app-title" content="업무노트">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <style>
 :root{
@@ -38,8 +38,10 @@ input,textarea{font:inherit;color:inherit}
   padding:calc(env(safe-area-inset-top) + 12px) var(--pad) 12px;
   display:flex;align-items:center;gap:12px}
 .daynav{flex:1;display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
-.ttl{font-size:1.25em;font-weight:700;letter-spacing:-.01em;min-width:0;text-align:center;white-space:nowrap}
+.ttl{font-size:1.25em;font-weight:700;letter-spacing:-.01em;min-width:0;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ttl small{font-size:.62em;font-weight:400;color:var(--muted);margin-left:8px}
+.ttl.tap{text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:5px}
 .ico{width:50px;height:50px;border-radius:12px;display:grid;place-items:center;flex:none}
 .ico:active{background:rgba(22,33,43,.08)}
 .ico svg{width:26px;height:26px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -50,6 +52,22 @@ input,textarea{font:inherit;color:inherit}
   padding:10px var(--pad);text-align:center;border-bottom:1px solid #EAD9A8}
 
 main{flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* ---------- 홈 ---------- */
+#homeView{flex:1;min-height:0;display:flex;flex-direction:column;padding:var(--pad)}
+.hwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.hgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:620px}
+@media (max-width:430px){.hgrid{grid-template-columns:1fr;gap:14px}}
+.hcard{background:var(--card);border:1px solid var(--rule);border-radius:16px;
+  padding:34px 16px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.hcard:active{background:#F1F5FA}
+.hcard svg{width:54px;height:54px;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.hcard.a svg,.hcard.b svg{stroke:var(--accent)}
+.hcard .hl{font-size:1.1em;font-weight:700;letter-spacing:-.01em}
+.homeft{flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding-top:14px;font-size:.78em;color:var(--muted)}
+.homeft .tools{display:flex;gap:10px}
+.homeft .tools button{border:1px solid var(--rule);border-radius:9px;padding:9px 13px;background:var(--card);color:var(--muted)}
 
 /* ---------- 달력 ---------- */
 #calView{flex:1;min-height:0;display:flex;flex-direction:column;padding:var(--pad);gap:0}
@@ -89,9 +107,6 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 .legend{display:flex;gap:18px}
 .legend i{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:7px}
 .ver{color:var(--faint);font-size:.9em}
-.calft .tools{display:flex;gap:10px}
-.calft .tools button{border:1px solid var(--rule);border-radius:9px;padding:9px 13px;background:var(--card);color:var(--muted)}
-.calft .tools button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .ev.d{background:var(--done-bg);color:var(--done-ink)}
 
 /* ---------- 일지 ---------- */
@@ -107,7 +122,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 .r.done textarea,.r.done .due{color:var(--done-ink)}
 .chk{display:grid;place-items:center;padding:0}
 .chk button{width:28px;height:28px;border:2px solid var(--faint);border-radius:6px;display:grid;place-items:center}
-.chk svg{width:18px;height:18px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.chk svg{width:18px;height:18px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .r.done .chk button{border-color:var(--done-dot);background:var(--done-dot)}
 .r.done .chk svg{opacity:1}
 .c2{padding:0}
@@ -137,10 +152,6 @@ main{flex:1;min-height:0;display:flex;flex-direction:column}
 .cat button.newcat{width:100%;height:100%}
 .r.trip{background:var(--trip-bg)}
 .r.meet{background:#EAF1FA}
-body.dragging{-webkit-user-select:none;user-select:none}
-body.dragging .scroll{overflow:hidden}
-.r.drag{background:#DCE8F6;position:relative;z-index:3;
-  box-shadow:0 3px 14px rgba(22,33,43,.18)}
 .memo{display:grid;place-items:center;padding:0}
 .memo button{width:34px;height:34px;display:grid;place-items:center;color:#C2CDD6;border-radius:7px}
 .memo button.has{color:var(--accent)}
@@ -166,6 +177,8 @@ body.dragging .scroll{overflow:hidden}
 .grip{width:100%;height:100%;display:grid;place-items:center;color:var(--muted);
   touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab}
 .grip svg{width:24px;height:24px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+body.dragging{-webkit-user-select:none;user-select:none}
+.r.drag{background:#E8F0FA;box-shadow:0 2px 10px rgba(22,33,43,.18);position:relative;z-index:2}
 
 .etcbox{flex:none;padding:4px var(--pad) calc(env(safe-area-inset-bottom) + 10px);background:var(--paper)}
 .etbl{border:1px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--card)}
@@ -177,6 +190,34 @@ body.dragging .scroll{overflow:hidden}
   background-repeat:no-repeat;background-size:100% 160px}
 #etc:focus{outline:none;background-color:#FAFCFD}
 #etc::placeholder{color:#B7C4CE}
+
+/* ---------- 추진과제 목록 ---------- */
+#plistView{flex:1;min-height:0;display:flex;flex-direction:column}
+.plscroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:10px var(--pad) calc(env(safe-area-inset-bottom) + 16px)}
+.ptbl{border:1px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--card)}
+.p2{display:grid;grid-template-columns:minmax(0,1fr) 44px;border-top:1px solid var(--rule-row)}
+.p2:first-child{border-top:none}
+.p2>div+div{border-left:1px solid var(--rule-soft)}
+.p2.hd{background:#F5F8FA;color:var(--muted);font-size:.78em;font-weight:700}
+.p2.hd>div{padding:11px 6px;text-align:center}
+.pname{min-width:0;padding:0}
+.pname button{width:100%;height:100%;min-height:56px;text-align:left;padding:12px 16px;
+  font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pname button:active{background:#F1F5FA}
+.pempty{padding:44px 20px;text-align:center;color:var(--muted);font-size:.88em;line-height:1.7}
+
+/* ---------- 추진과제 상세 ---------- */
+#pdetView{flex:1;min-height:0;display:flex;flex-direction:column;
+  padding:10px var(--pad) calc(env(safe-area-inset-bottom) + 12px)}
+.pmbox{flex:1;min-height:0;display:flex;border:1px solid var(--ink);border-radius:10px;
+  overflow:hidden;background:var(--card)}
+#pmemo{flex:1;width:100%;border:none;background:transparent;resize:none;display:block;
+  font-size:.88em;line-height:34px;padding:0 16px;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  background-image:repeating-linear-gradient(to bottom,transparent 0 33px,var(--rule-soft) 33px 34px);
+  background-attachment:local}
+#pmemo:focus{outline:none;background-color:#FAFCFD}
 
 /* ---------- 팝업 ---------- */
 .ov{position:fixed;inset:0;z-index:40;background:rgba(22,33,43,.45);display:flex;
@@ -211,19 +252,56 @@ body.dragging .scroll{overflow:hidden}
     <button class="ico hide" id="prevD" aria-label="전날">
       <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
-    <div class="ttl" id="title">업무일지</div>
+    <div class="ttl" id="title">업무노트</div>
     <button class="ico hide" id="nextD" aria-label="다음날">
       <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
     </button>
   </div>
   <button class="chip hide" id="sortBtn">순서 편집</button>
-  <button class="ico" id="todayBtn" aria-label="이번 달로">
+  <button class="ico hide" id="addPrj" aria-label="새 과제">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+  <button class="ico hide" id="todayBtn" aria-label="이번 달로">
     <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
   </button>
+  <div class="ico" id="rspace" aria-hidden="true"></div>
 </div>
 
 <main>
-  <div id="calView">
+  <!-- 홈 -->
+  <div id="homeView">
+    <div class="hwrap">
+      <div class="hgrid">
+        <button class="hcard a" id="goCal">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="5" width="18" height="16" rx="2"/>
+            <path d="M8 3v4M16 3v4M3 10h18"/>
+            <path d="M7.5 14h3M13.5 14h3M7.5 17.5h3"/>
+          </svg>
+          <span class="hl">업무일지</span>
+        </button>
+        <button class="hcard b" id="goPrj">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+            <path d="M14 3v5h5"/>
+            <path d="M8 13l1.6 1.6L13 11"/>
+            <path d="M8 18h8"/>
+          </svg>
+          <span class="hl">추진과제</span>
+        </button>
+      </div>
+    </div>
+    <div class="homeft">
+      <span class="ver">v1.4 · 2026.08.28</span>
+      <div class="tools">
+        <button id="expBtn">백업 저장</button>
+        <button id="impBtn">불러오기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 달력 -->
+  <div id="calView" class="hide">
     <div class="calhd">
       <button class="ico" id="prevM" aria-label="이전 달"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="m" id="monthLbl"></div>
@@ -235,17 +313,13 @@ body.dragging .scroll{overflow:hidden}
         <span><i class="dot trip"></i>출장</span>
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
-        <span class="ver">v1.3 · 2026.08.24</span>
-      </div>
-      <div class="tools">
-        <button id="expBtn">백업 저장</button>
-        <button id="impBtn">불러오기</button>
       </div>
     </div>
   </div>
 
+  <!-- 일지 -->
   <div id="dayView" class="hide">
-    <div class="scroll">
+    <div class="scroll" id="dayScroll">
       <div class="tbl" id="tbl"></div>
     </div>
     <div class="etcbox">
@@ -253,6 +327,20 @@ body.dragging .scroll{overflow:hidden}
         <div class="ethd">기타사항</div>
         <textarea id="etc"></textarea>
       </div>
+    </div>
+  </div>
+
+  <!-- 추진과제 목록 -->
+  <div id="plistView" class="hide">
+    <div class="plscroll">
+      <div class="ptbl" id="plist"></div>
+    </div>
+  </div>
+
+  <!-- 추진과제 상세 -->
+  <div id="pdetView" class="hide">
+    <div class="pmbox">
+      <textarea id="pmemo"></textarea>
     </div>
   </div>
 </main>
@@ -298,22 +386,45 @@ function md(s){var p=s.split('-');return (+p[1])+'/'+(+p[2])}
 function shiftDay(ds,n){var d=parse(ds);d.setDate(d.getDate()+n);return iso(d)}
 function mdw(s){var d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+'('+DOWS[d.getDay()]+')'}
 function esc(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function uid(p){return p+Date.now()+Math.random().toString(36).slice(2,6)}
 
 var canSave=true;
 try{localStorage.setItem('__t','1');localStorage.removeItem('__t')}catch(e){canSave=false}
 if(!canSave)$('warn').classList.remove('hide');
 
 var mem=null;
+function fix(d){
+  d.tasks=d.tasks||[];d.notes=d.notes||{};d.seq=d.seq||1;
+  d.projects=d.projects||[];d.pseq=d.pseq||1;
+  // 예전 방식(줄 단위 목록)으로 적어둔 내용을 줄글로 옮긴다
+  if(d.ptasks&&d.ptasks.length){
+    d.projects.forEach(function(p){
+      if(typeof p.body==='string')return;
+      p.body=d.ptasks.filter(function(t){return t.pid===p.id})
+        .sort(function(a,b){return (a.seq||0)-(b.seq||0)})
+        .map(function(t){
+          var x=(t.text||'').trim();
+          if(t.memo&&t.memo.trim())x+=(x?'\n':'')+t.memo.trim();
+          return x;
+        })
+        .filter(function(x){return x})
+        .join('\n');
+    });
+  }
+  delete d.ptasks;
+  d.projects.forEach(function(p){if(typeof p.body!=='string')p.body=''});
+  return d;
+}
 function read(){
   var raw=null;
   try{raw=canSave?localStorage.getItem(KEY):mem}catch(e){}
-  if(!raw)return{tasks:[],notes:{},seq:1};
-  try{var d=JSON.parse(raw);d.tasks=d.tasks||[];d.notes=d.notes||{};d.seq=d.seq||1;return d}
-  catch(e){return{tasks:[],notes:{},seq:1}}
+  if(!raw)return fix({});
+  try{return fix(JSON.parse(raw))}
+  catch(e){return fix({})}
 }
 function write(){var raw=JSON.stringify(db);try{if(canSave)localStorage.setItem(KEY,raw);else mem=raw}catch(e){}}
 
-var db=read(), curDate=today(), sortMode=false, calY, calM;
+var db=read(), curDate=today(), curPid=null, sortMode=false, calY, calM;
 (function(){var n=new Date();calY=n.getFullYear();calM=n.getMonth()})();
 
 function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');
@@ -322,7 +433,7 @@ function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');
 var CATS=['업무','출장','회의'];
 function catOf(t){return t.cat||'업무'}
 function rank(t){if(t.done)return 3;var c=catOf(t);return c==='출장'?0:c==='회의'?1:2}
-function crank(t){if(t.done)return 3;var c=catOf(t);return c==='출장'?0:c==='회의'?1:2}
+function crank(t){return rank(t)}
 function firstline(s){return (s||'').trim().split('\n')[0]}
 function timeVal(t){
   var m=/^(\d{1,2}):?(\d{0,2})$/.exec((t.time||'').trim());
@@ -343,6 +454,62 @@ function visible(d){
 }
 function dueOn(d){return db.tasks.filter(function(t){return t.due===d})}
 
+/* ================= 화면 전환 ================= */
+var curView='home';
+var VIEW_EL={home:'homeView',cal:'calView',day:'dayView',plist:'plistView',pdet:'pdetView'};
+
+function applyView(v,arg){
+  if(!VIEW_EL[v])v='home';
+  closePop();
+  curView=v;sortMode=false;
+  for(var k in VIEW_EL){
+    if(VIEW_EL.hasOwnProperty(k))$(VIEW_EL[k]).classList[k===v?'remove':'add']('hide');
+  }
+  var show={back:false,prevD:false,nextD:false,sortBtn:false,addPrj:false,
+            todayBtn:false,lspace:false,rspace:false};
+  var tt=$('title');tt.classList.remove('tap');tt.onclick=null;
+
+  if(v==='home'){
+    show.lspace=true;show.rspace=true;
+    tt.textContent='업무노트';
+  }else if(v==='cal'){
+    show.back=true;show.todayBtn=true;
+    tt.textContent='업무일지';
+    renderCal();
+  }else if(v==='day'){
+    curDate=arg||today();
+    show.back=true;show.prevD=true;show.nextD=true;show.sortBtn=true;
+    renderDay();$('dayScroll').scrollTop=0;
+  }else if(v==='plist'){
+    show.back=true;show.addPrj=true;
+    tt.textContent='추진과제';
+    renderPlist();
+  }else if(v==='pdet'){
+    curPid=arg||curPid;
+    if(!prjById(curPid)){rep('plist');return}
+    show.back=true;
+    renderPdet();
+  }
+  for(var b in show){
+    if(show.hasOwnProperty(b))$(b).classList[show[b]?'remove':'add']('hide');
+  }
+}
+function nav(v,arg){try{history.pushState({v:v,arg:arg},'')}catch(e){}applyView(v,arg)}
+function rep(v,arg){try{history.replaceState({v:v,arg:arg},'')}catch(e){}applyView(v,arg)}
+
+$('goCal').addEventListener('click',function(){nav('cal')});
+$('goPrj').addEventListener('click',function(){nav('plist')});
+$('back').addEventListener('click',function(){
+  if(history.state&&history.state.v&&history.state.v!=='home')history.back();
+  else rep('home');
+});
+window.addEventListener('popstate',function(e){
+  if(popEl){closePop();return}
+  var s=e.state||{v:'home'};
+  applyView(s.v,s.arg);
+});
+
+/* ================= 달력 ================= */
 function renderCal(){
   $('monthLbl').textContent=calY+'년 '+(calM+1)+'월';
   var g=$('calGrid');g.innerHTML='';
@@ -375,36 +542,19 @@ function renderCal(){
     c.innerHTML='<div class="top"><span class="n">'+d+'</span>'
       +(HOLIDAYS[ds]?'<span class="hn">'+HOLIDAYS[ds]+'</span>':'<span class="hn"></span>')
       +(hasWork?'<span class="dot"></span>':'')+'</div>'+evh;
-    (function(x){c.addEventListener('click',function(){
-      try{history.pushState({v:'day'},'')}catch(err){}
-      openDay(x);
-    })})(ds);
+    (function(x){c.addEventListener('click',function(){nav('day',x)})})(ds);
     g.appendChild(c);
   }
   var tail=rows*7-(first+last);
   for(var k=0;k<tail;k++){var v2=document.createElement('div');v2.className='cell void';g.appendChild(v2)}
 }
 
-function openDay(d){
-  curDate=d;sortMode=false;
-  $('calView').classList.add('hide');$('dayView').classList.remove('hide');
-  $('back').classList.remove('hide');$('sortBtn').classList.remove('hide');
-  $('prevD').classList.remove('hide');$('nextD').classList.remove('hide');
-  $('todayBtn').classList.add('hide');$('lspace').classList.add('hide');
-  renderDay();document.querySelector('.scroll').scrollTop=0;
-}
-function openCal(){
-  $('dayView').classList.add('hide');$('calView').classList.remove('hide');
-  $('back').classList.add('hide');$('sortBtn').classList.add('hide');
-  $('prevD').classList.add('hide');$('nextD').classList.add('hide');
-  $('todayBtn').classList.remove('hide');$('lspace').classList.remove('hide');
-  $('title').textContent='업무일지';renderCal();
-}
 var LH=40;
 function grow(e){e.style.height='0px';
   var mn=parseInt(e.getAttribute('data-min')||'1',10);
   var n=Math.max(mn,Math.ceil(e.scrollHeight/LH));e.style.height=(n*LH)+'px'}
 
+/* ================= 일지 ================= */
 function renderDay(){
   var dt=parse(curDate);
   $('title').innerHTML=(dt.getMonth()+1)+'월 '+dt.getDate()+'일 <small>'+DOWF[dt.getDay()]+'</small>';
@@ -422,7 +572,7 @@ function renderDay(){
     r.setAttribute('data-done','1');tbl.appendChild(r)});
   var tas=tbl.querySelectorAll('textarea');
   for(var i=0;i<tas.length;i++)grow(tas[i]);
-  refit();
+  refitDay();
   var e=$('etc');e.value=db.notes[curDate]||'';
   if(focusId){
     var fr=tbl.querySelector('div.r[data-id="'+focusId+'"]');
@@ -431,14 +581,12 @@ function renderDay(){
   }
 }
 
-function blanks(){return $('tbl').querySelectorAll('div.r[data-blank="1"]')}
-
-function refit(){
-  var sc=document.querySelector('.scroll'), tbl=$('tbl');
+function refit(sc,tbl,mk){
   if(!sc||!sc.clientHeight)return;
   var cs=getComputedStyle(sc);
   var room=sc.clientHeight-(parseFloat(cs.paddingTop)||0)-(parseFloat(cs.paddingBottom)||0), g=0;
-  var ref=tbl.querySelector('div.r[data-done="1"]');
+  var ref=tbl.querySelector('[data-done="1"]');
+  function blanks(){return tbl.querySelectorAll('[data-blank="1"]')}
   while(tbl.offsetHeight>room && g++<80){
     var b=blanks();
     if(b.length<=1)break;
@@ -447,9 +595,10 @@ function refit(){
     tbl.removeChild(last);
   }
   g=0;
-  while(tbl.offsetHeight+40<=room && g++<80)tbl.insertBefore(blankRow(),ref);
-  if(blanks().length===0)tbl.insertBefore(blankRow(),ref);
+  while(tbl.offsetHeight+40<=room && g++<80)tbl.insertBefore(mk(),ref);
+  if(blanks().length===0)tbl.insertBefore(mk(),ref);
 }
+function refitDay(){refit($('dayScroll'),$('tbl'),blankRow)}
 
 var focusId=null;
 function taskRow(t,idx,total){
@@ -490,7 +639,7 @@ function taskRow(t,idx,total){
   }
   var ta=document.createElement('textarea');ta.value=t.text;ta.rows=1;
   ta.setAttribute('data-min','1');
-  ta.addEventListener('input',function(){t.text=ta.value;grow(ta);refit();save()});
+  ta.addEventListener('input',function(){t.text=ta.value;grow(ta);refitDay();save()});
   c2.appendChild(ta);
   if(mt)c2.appendChild(mt);
   r.appendChild(c2);
@@ -501,9 +650,9 @@ function taskRow(t,idx,total){
   var c3=document.createElement('div');c3.className='due';
   setDue(c3,t);bindDue(c3,t);r.appendChild(c3);
   var c4=document.createElement('div');c4.className='chk';
-  c4.appendChild(mkCheck(t));r.appendChild(c4);
+  c4.appendChild(mkCheck(t,renderDay));r.appendChild(c4);
   var c5=document.createElement('div');c5.className='del';
-  c5.appendChild(mkDel(t));r.appendChild(c5);
+  c5.appendChild(mkDel(t,db.tasks,renderDay));r.appendChild(c5);
   return r;
 }
 
@@ -516,10 +665,10 @@ function mkMemo(t){
   return b;
 }
 
-function mkDel(t){
+function mkDel(t,arr,after){
   var b=document.createElement('button');b.setAttribute('aria-label','줄 삭제');
   b.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
-  b.addEventListener('click',function(){openDel(t)});
+  b.addEventListener('click',function(){openDel(t,arr,after)});
   return b;
 }
 
@@ -545,10 +694,10 @@ function bindDue(c3,t){
     openDue(t);
   });
 }
-function mkCheck(t){
+function mkCheck(t,after){
   var b=document.createElement('button');b.setAttribute('aria-label','완료 표시');
   b.innerHTML='<svg viewBox="0 0 24 24"><path d="M5 13l4 4 10-10"/></svg>';
-  b.addEventListener('click',function(){t.done=!t.done;write();renderDay()});
+  b.addEventListener('click',function(){t.done=!t.done;write();after()});
   return b;
 }
 
@@ -564,8 +713,7 @@ function blankRow(){
   ta.readOnly=true;
   function start(){
     openCat('',function(v){
-      var nt={id:'t'+Date.now()+Math.random().toString(36).slice(2,6),
-        cat:v,text:'',due:null,time:'',place:'',
+      var nt={id:uid('t'),cat:v,text:'',due:null,time:'',place:'',
         done:false,made:curDate,seq:db.seq++};
       db.tasks.push(nt);write();focusId=nt.id;renderDay();
     });
@@ -580,20 +728,95 @@ function blankRow(){
   return r;
 }
 
+/* ================= 추진과제 ================= */
+function prjById(id){
+  for(var i=0;i<db.projects.length;i++)if(db.projects[i].id===id)return db.projects[i];
+  return null;
+}
+function renderPlist(){
+  var el=$('plist');el.innerHTML='';
+  var ps=db.projects.slice().sort(function(a,b){return a.seq-b.seq});
+  if(!ps.length){
+    el.innerHTML='<div class="pempty">등록된 과제가 없습니다.<br>오른쪽 위 + 를 눌러 추가하세요.</div>';
+    return;
+  }
+  var hd=document.createElement('div');hd.className='p2 hd';
+  hd.innerHTML='<div>과제명</div><div>삭제</div>';
+  el.appendChild(hd);
+  ps.forEach(function(p){
+    var row=document.createElement('div');row.className='p2';
+    var c1=document.createElement('div');c1.className='pname';
+    var b=document.createElement('button');b.textContent=p.title;
+    b.addEventListener('click',function(){nav('pdet',p.id)});
+    c1.appendChild(b);row.appendChild(c1);
+
+    var c3=document.createElement('div');c3.className='del';
+    var db2=document.createElement('button');db2.setAttribute('aria-label','과제 삭제');
+    db2.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+    db2.addEventListener('click',function(){openDelPrj(p)});
+    c3.appendChild(db2);row.appendChild(c3);
+    el.appendChild(row);
+  });
+}
+
+function renderPdet(){
+  var p=prjById(curPid);
+  if(!p){rep('plist');return}
+  var tt=$('title');
+  tt.textContent=p.title;tt.classList.add('tap');
+  tt.onclick=function(){
+    openPrompt('과제명 수정',p.title,function(v){p.title=v;write();renderPdet()});
+  };
+  var ta=$('pmemo');
+  ta.value=p.body||'';
+  ta.scrollTop=0;
+}
+
+$('pmemo').addEventListener('input',function(){
+  var p=prjById(curPid);
+  if(p){p.body=this.value;save()}
+});
+
+$('addPrj').addEventListener('click',function(){
+  openPrompt('새 과제','',function(v){
+    var p={id:uid('P'),title:v,body:'',seq:db.pseq++,made:today()};
+    db.projects.push(p);write();nav('pdet',p.id);
+  });
+});
+
+function openDelPrj(p){
+  closePop();
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="pop"><h3>과제 삭제</h3>'
+    +'<p>이 과제와 안에 적은 내용이 함께 삭제됩니다. 되돌릴 수 없습니다.</p>'
+    +'<div class="qt">'+esc(p.title)+'</div>'
+    +'<div class="row"><button class="no" id="pno">취소</button>'
+    +'<button class="dg" id="pdel">삭제</button></div></div>';
+  document.body.appendChild(ov);popEl=ov;
+  $('pdel').addEventListener('click',function(){
+    var i=db.projects.indexOf(p);if(i>-1)db.projects.splice(i,1);
+    write();closePop();renderPlist();toast('삭제했습니다');
+  });
+  $('pno').addEventListener('click',closePop);
+  ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
+}
+
+/* ================= 공용 ================= */
 function byId(id){
   for(var i=0;i<db.tasks.length;i++)if(db.tasks[i].id===id)return db.tasks[i];
   return null;
 }
 
 function peers(row){
-  var all=$('tbl').querySelectorAll('div.r[data-id]'), out=[];
+  var tbl=row.parentNode;
+  var all=tbl.querySelectorAll('[data-id]'), out=[];
   var k=row.getAttribute('data-rank');
   for(var i=0;i<all.length;i++)if(all[i].getAttribute('data-rank')===k)out.push(all[i]);
   return out;
 }
 
-function commitOrder(){
-  var rows=$('tbl').querySelectorAll('div.r[data-id]'), n=1;
+function commitOrder(tbl){
+  var rows=tbl.querySelectorAll('[data-id]'), n=1;
   for(var i=0;i<rows.length;i++){
     var t=byId(rows[i].getAttribute('data-id'));
     if(t)t.seq=n++;
@@ -606,7 +829,7 @@ function save(){clearTimeout(timer);timer=setTimeout(write,500)}
 
 var popEl=null;
 
-function openDel(t){
+function openDel(t,arr,after){
   closePop();
   var ov=document.createElement('div');ov.className='ov';
   var pv=(t.text||'').trim();
@@ -617,9 +840,9 @@ function openDel(t){
     +'<button class="dg" id="pdel">삭제</button></div></div>';
   document.body.appendChild(ov);popEl=ov;
   $('pdel').addEventListener('click',function(){
-    var i=db.tasks.indexOf(t);
-    if(i>-1)db.tasks.splice(i,1);
-    write();closePop();renderDay();toast('삭제했습니다');
+    var i=arr.indexOf(t);
+    if(i>-1)arr.splice(i,1);
+    write();closePop();after();toast('삭제했습니다');
   });
   $('pno').addEventListener('click',closePop);
   ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
@@ -638,6 +861,27 @@ function openMemo(t,btn){
     t.memo=ta.value;write();closePop();
     if(btn)btn.className=(t.memo&&t.memo.trim())?'has':'';
   });
+  $('pno').addEventListener('click',closePop);
+  ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
+}
+
+function openPrompt(title,val,onOk){
+  closePop();
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="pop"><h3>'+esc(title)+'</h3>'
+    +'<input type="text" id="pin" maxlength="40" placeholder="과제명을 입력하세요">'
+    +'<div class="row"><button class="no" id="pno">취소</button>'
+    +'<button class="ok" id="pok">확인</button></div></div>';
+  document.body.appendChild(ov);popEl=ov;
+  var inp=$('pin');inp.value=val||'';
+  setTimeout(function(){inp.focus()},60);
+  function ok(){
+    var v=inp.value.trim();
+    if(!v){toast('과제명을 입력하세요');return}
+    closePop();onOk(v);
+  }
+  $('pok').addEventListener('click',ok);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter')ok()});
   $('pno').addEventListener('click',closePop);
   ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
 }
@@ -682,17 +926,11 @@ function openDue(t){
 }
 function closePop(){if(popEl){popEl.remove();popEl=null}}
 
-$('back').addEventListener('click',function(){
-  if(history.state&&history.state.v==='day')history.back();
-  else openCal();
+$('prevD').addEventListener('click',function(){rep('day',shiftDay(curDate,-1))});
+$('nextD').addEventListener('click',function(){rep('day',shiftDay(curDate,1))});
+$('sortBtn').addEventListener('click',function(){
+  sortMode=!sortMode;renderDay();
 });
-window.addEventListener('popstate',function(){
-  if(popEl){closePop();return}
-  if(!$('dayView').classList.contains('hide'))openCal();
-});
-$('prevD').addEventListener('click',function(){openDay(shiftDay(curDate,-1))});
-$('nextD').addEventListener('click',function(){openDay(shiftDay(curDate,1))});
-$('sortBtn').addEventListener('click',function(){sortMode=!sortMode;renderDay()});
 $('todayBtn').addEventListener('click',function(){
   var n=new Date();calY=n.getFullYear();calM=n.getMonth();renderCal();toast('이번 달')});
 $('prevM').addEventListener('click',function(){calM--;if(calM<0){calM=11;calY--}renderCal()});
@@ -701,14 +939,14 @@ $('etc').addEventListener('input',function(){db.notes[curDate]=this.value;save()
 $('expBtn').addEventListener('click',function(){
   var b=new Blob([JSON.stringify(db)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(b);
-  a.download='업무일지_백업_'+today()+'.json';a.click();
+  a.download='업무노트_백업_'+today()+'.json';a.click();
 });
 $('impBtn').addEventListener('click',function(){$('fp').click()});
 $('fp').addEventListener('change',function(e){
   var f=e.target.files[0];if(!f)return;
   var r=new FileReader();
   r.onload=function(){try{var d=JSON.parse(r.result);if(!d.tasks)throw 0;
-    db=d;db.notes=db.notes||{};db.seq=db.seq||1;write();renderCal();toast('복원했습니다')}
+    db=fix(d);write();rep('home');toast('복원했습니다')}
     catch(err){toast('파일을 읽지 못했습니다')}};
   r.readAsText(f);e.target.value='';
 });
@@ -721,11 +959,11 @@ window.addEventListener('resize',function(){
   lastW=window.innerWidth;
   var a=document.activeElement;
   if(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'))return;
-  if(!$('dayView').classList.contains('hide'))renderDay();
+  if(curView==='day')renderDay();
 });
 
 /* ---------- 순서 드래그 ---------- */
-var dragRow=null;
+var dragRow=null, dragTbl=null;
 
 function upTo(el,cls){
   while(el&&el!==document.body){
@@ -741,7 +979,7 @@ function dragBegin(e){
   if(!cell)return false;
   var row=upTo(cell,'r');
   if(!row)return false;
-  dragRow=row;
+  dragRow=row;dragTbl=row.parentNode;
   row.classList.add('drag');
   document.body.classList.add('dragging');
   return true;
@@ -749,7 +987,7 @@ function dragBegin(e){
 
 function dragMove(y){
   if(!dragRow)return;
-  var tbl=$('tbl'), list=peers(dragRow), i=list.indexOf(dragRow);
+  var tbl=dragTbl, list=peers(dragRow), i=list.indexOf(dragRow);
   if(i<0)return;
   if(i>0){
     var pv=list[i-1], pr=pv.getBoundingClientRect();
@@ -765,12 +1003,13 @@ function dragStop(){
   if(!dragRow)return;
   dragRow.classList.remove('drag');
   document.body.classList.remove('dragging');
-  dragRow=null;
-  commitOrder();
+  var tbl=dragTbl;
+  dragRow=null;dragTbl=null;
+  commitOrder(tbl);
 }
 
-var TBL=$('tbl');
-TBL.addEventListener('touchstart',function(e){
+var MAIN=document.querySelector('main');
+MAIN.addEventListener('touchstart',function(e){
   if(!e.touches.length)return;
   if(dragBegin(e))e.preventDefault();
 },{passive:false});
@@ -781,7 +1020,7 @@ document.addEventListener('touchmove',function(e){
 document.addEventListener('touchend',dragStop);
 document.addEventListener('touchcancel',dragStop);
 
-TBL.addEventListener('pointerdown',function(e){
+MAIN.addEventListener('pointerdown',function(e){
   if(e.pointerType==='touch')return;
   if(dragBegin(e))e.preventDefault();
 });
@@ -792,7 +1031,13 @@ document.addEventListener('pointerup',function(e){
   if(e.pointerType!=='touch')dragStop();
 });
 
-renderCal();
+/* ---------- 시작 ---------- */
+(function(){
+  var s=null;
+  try{s=history.state}catch(e){}
+  if(s&&s.v&&VIEW_EL[s.v])applyView(s.v,s.arg);
+  else rep('home');
+})();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
