@@ -288,7 +288,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot trip"></i>출장</span>
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
-        <span class="ver">v2.1 · 2026.08.28</span>
+        <span class="ver">v2.0 · 2026.08.28</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -1199,6 +1199,7 @@ document.addEventListener('pointerup',function(e){
 /* ---------- 좌우 스와이프로 앞뒤 이동 ---------- */
 function attachSwipe(el,onNext,onPrev){
   var x0=0,y0=0,t0=0,live=false;
+  function fire(dx){live=false;if(dx<0)onNext();else onPrev()}
   el.addEventListener('touchstart',function(e){
     live=false;
     if(e.touches.length!==1)return;
@@ -1208,17 +1209,22 @@ function attachSwipe(el,onNext,onPrev){
   },{passive:true});
   el.addEventListener('touchmove',function(e){
     if(!live||!e.touches.length)return;
-    if(Math.abs(e.touches[0].clientY-y0)>56)live=false;
+    var dx=e.touches[0].clientX-x0, dy=Math.abs(e.touches[0].clientY-y0);
+    if(dy>40){live=false;return}
+    // 손가락을 떼기 전에도 일정 거리 넘으면 바로 넘김
+    if(Math.abs(dx)>=28&&Math.abs(dx)>dy*1.2)fire(dx);
   },{passive:true});
   el.addEventListener('touchend',function(e){
     if(!live)return;
     live=false;
     if(dragRow||document.body.classList.contains('dragging'))return;
     if(!e.changedTouches.length)return;
-    if(Date.now()-t0>800)return;
+    var ms=Date.now()-t0;
+    if(ms>900)return;
     var t=e.changedTouches[0];
     var dx=t.clientX-x0, dy=Math.abs(t.clientY-y0);
-    if(Math.abs(dx)<72||Math.abs(dx)<dy*2)return;
+    var min=(ms<260)?14:20;
+    if(Math.abs(dx)<min||Math.abs(dx)<dy*1.1)return;
     if(dx<0)onNext();else onPrev();
   },{passive:true});
 }
