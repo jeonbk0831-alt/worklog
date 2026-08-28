@@ -1062,27 +1062,31 @@ function shiftMonth(n){
 }
 
 /* 좌우로 밀리며 넘어가는 전환 */
-var sliding=false;
+var sliding=false, slT1=null, slT2=null;
+function slideReset(el){
+  clearTimeout(slT1);clearTimeout(slT2);
+  el.style.transition='';el.style.transform='';
+  sliding=false;
+}
 function slideSwap(el,dir,doRender){
-  if(sliding){doRender();return}
+  if(sliding)slideReset(el);
   sliding=true;
   var out=(dir>0?'-100%':'100%'), inn=(dir>0?'100%':'-100%');
-  el.style.transition='transform .15s ease-in';
+  el.style.transition='transform .11s ease-in';
   el.style.transform='translateX('+out+')';
-  setTimeout(function(){
+  slT1=setTimeout(function(){
     doRender();
     el.style.transition='none';
     el.style.transform='translateX('+inn+')';
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
-        el.style.transition='transform .17s ease-out';
+        el.style.transition='transform .13s ease-out';
         el.style.transform='translateX(0)';
-        setTimeout(function(){
-          el.style.transition='';el.style.transform='';sliding=false;
-        },180);
+        sliding=false;
+        slT2=setTimeout(function(){el.style.transition='';el.style.transform=''},150);
       });
     });
-  },155);
+  },115);
 }
 function goMonth(n){slideSwap($('calView'),n,function(){shiftMonth(n)})}
 function goDay(n){slideSwap($('dayView'),n,function(){rep('day',shiftDay(curDate,n))})}
