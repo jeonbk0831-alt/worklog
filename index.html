@@ -38,11 +38,12 @@ input,textarea{font:inherit;color:inherit}
 .bar{flex:none;background:var(--card);border-bottom:1px solid var(--rule);
   padding:calc(env(safe-area-inset-top) + 12px) var(--pad) 12px;
   display:flex;align-items:center;gap:12px}
-.daynav{flex:1;display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
+.barL,.barR{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:12px}
+.barR{justify-content:flex-end}
+.daynav{flex:0 1 auto;max-width:62%;display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
 .ttl{font-size:1.25em;font-weight:700;letter-spacing:-.01em;min-width:0;text-align:center;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ttl small{font-size:.62em;font-weight:400;color:var(--muted);margin-left:8px}
-.ttl.tap{text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:5px}
 .ico{width:50px;height:50px;border-radius:12px;display:grid;place-items:center;flex:none}
 .ico:active{background:rgba(22,33,43,.08)}
 .ico svg{width:26px;height:26px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -247,8 +248,10 @@ body.dragging{-webkit-user-select:none;user-select:none}
 <div id="warn" class="warn hide">이 기기에서는 저장이 되지 않습니다. 화면과 펜 입력만 확인해 주세요.</div>
 
 <div class="bar">
-  <div class="ico" id="lspace" aria-hidden="true"></div>
-  <button class="chip hide" id="back">이전</button>
+  <div class="barL">
+    <div class="ico" id="lspace" aria-hidden="true"></div>
+    <button class="chip hide" id="back">이전</button>
+  </div>
   <div class="daynav">
     <button class="ico hide" id="prevD" aria-label="전날">
       <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
@@ -258,14 +261,16 @@ body.dragging{-webkit-user-select:none;user-select:none}
       <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
     </button>
   </div>
-  <button class="chip hide" id="sortBtn">순서 편집</button>
-  <button class="ico hide" id="addPrj" aria-label="새 과제">
-    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-  </button>
-  <button class="ico hide" id="todayBtn" aria-label="이번 달로">
-    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
-  </button>
-  <div class="ico" id="rspace" aria-hidden="true"></div>
+  <div class="barR">
+    <button class="chip hide" id="sortBtn">순서 편집</button>
+    <button class="ico hide" id="addPrj" aria-label="새 과제">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="ico hide" id="todayBtn" aria-label="이번 달로">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>
+    </button>
+    <div class="ico" id="rspace" aria-hidden="true"></div>
+  </div>
 </div>
 
 <main>
@@ -1040,15 +1045,31 @@ document.addEventListener('pointerup',function(e){
   else rep('home');
 })();
 
-/* 외부 키보드 등으로 화면이 밀려 올라가는 것 방지 */
+/* 키보드 도구막대로 보이는 영역이 줄거나 밀릴 때 앱 높이를 맞춤 */
 function pinTop(){
   if(window.scrollY||window.pageYOffset)window.scrollTo(0,0);
   if(document.documentElement.scrollTop)document.documentElement.scrollTop=0;
-  if(document.body.scrollTop)document.body.scrollTop=0;
+}
+function fitView(){
+  pinTop();
+  var vv=window.visualViewport;
+  if(!vv)return;
+  var b=document.body.style;
+  b.height=Math.round(vv.height)+'px';
+  b.top=Math.round(vv.offsetTop)+'px';
 }
 window.addEventListener('scroll',pinTop,{passive:true});
-window.addEventListener('resize',pinTop);
-document.addEventListener('focusin',function(){setTimeout(pinTop,50);setTimeout(pinTop,250)});
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',fitView);
+  window.visualViewport.addEventListener('scroll',fitView);
+}
+window.addEventListener('resize',fitView);
+window.addEventListener('orientationchange',function(){setTimeout(fitView,150)});
+document.addEventListener('focusin',function(){
+  setTimeout(fitView,50);setTimeout(fitView,250);setTimeout(fitView,600);
+});
+document.addEventListener('focusout',function(){setTimeout(fitView,150)});
+fitView();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
