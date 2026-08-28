@@ -24,7 +24,8 @@
 @media (min-width:820px){:root{--fs:21px;--pad:28px}}
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;height:100%;overflow:hidden}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;overscroll-behavior:none}
+body{position:fixed;top:0;left:0;right:0;bottom:0}
 body{background:var(--paper);color:var(--ink);font-size:var(--fs);line-height:1.45;
   font-family:"Samsung Sans","SamsungOne","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
@@ -213,9 +214,9 @@ body.dragging{-webkit-user-select:none;user-select:none}
 .pmbox{flex:1;min-height:0;display:flex;border:1px solid var(--ink);border-radius:10px;
   overflow:hidden;background:var(--card)}
 #pmemo{flex:1;width:100%;border:none;background:transparent;resize:none;display:block;
-  font-size:.88em;line-height:34px;padding:0 16px;overflow-y:auto;
+  font-size:1.06em;line-height:40px;padding:0 16px;overflow-y:auto;
   -webkit-overflow-scrolling:touch;
-  background-image:repeating-linear-gradient(to bottom,transparent 0 33px,var(--rule-soft) 33px 34px);
+  background-image:repeating-linear-gradient(to bottom,transparent 0 39px,var(--rule-soft) 39px 40px);
   background-attachment:local}
 #pmemo:focus{outline:none;background-color:#FAFCFD}
 
@@ -292,7 +293,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
       </div>
     </div>
     <div class="homeft">
-      <span class="ver">v1.4 · 2026.08.28</span>
+      <span class="ver">v2.1 · 2026.08.28</span>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
         <button id="impBtn">불러오기</button>
@@ -1038,6 +1039,16 @@ document.addEventListener('pointerup',function(e){
   if(s&&s.v&&VIEW_EL[s.v])applyView(s.v,s.arg);
   else rep('home');
 })();
+
+/* 외부 키보드 등으로 화면이 밀려 올라가는 것 방지 */
+function pinTop(){
+  if(window.scrollY||window.pageYOffset)window.scrollTo(0,0);
+  if(document.documentElement.scrollTop)document.documentElement.scrollTop=0;
+  if(document.body.scrollTop)document.body.scrollTop=0;
+}
+window.addEventListener('scroll',pinTop,{passive:true});
+window.addEventListener('resize',pinTop);
+document.addEventListener('focusin',function(){setTimeout(pinTop,50);setTimeout(pinTop,250)});
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
