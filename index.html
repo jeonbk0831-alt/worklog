@@ -53,7 +53,7 @@ input,textarea{font:inherit;color:inherit}
 .warn{flex:none;background:var(--due-bg);color:#7A5A08;font-size:.8em;
   padding:10px var(--pad);text-align:center;border-bottom:1px solid #EAD9A8}
 
-main{flex:1;min-height:0;display:flex;flex-direction:column}
+main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 
 /* ---------- 달력 ---------- */
 #calView{flex:1;min-height:0;display:flex;flex-direction:column;padding:var(--pad);gap:0}
@@ -1047,8 +1047,8 @@ function openDue(t){
 }
 function closePop(){if(popEl){popEl.remove();popEl=null}}
 
-$('prevD').addEventListener('click',function(){rep('day',shiftDay(curDate,-1))});
-$('nextD').addEventListener('click',function(){rep('day',shiftDay(curDate,1))});
+$('prevD').addEventListener('click',function(){goDay(-1)});
+$('nextD').addEventListener('click',function(){goDay(1)});
 $('sortBtn').addEventListener('click',function(){
   sortMode=!sortMode;renderDay();renderPlist();
 });
@@ -1060,8 +1060,35 @@ function shiftMonth(n){
   while(calM>11){calM-=12;calY++}
   renderCal();
 }
-$('prevM').addEventListener('click',function(){shiftMonth(-1)});
-$('nextM').addEventListener('click',function(){shiftMonth(1)});
+
+/* 좌우로 밀리며 넘어가는 전환 */
+var sliding=false;
+function slideSwap(el,dir,doRender){
+  if(sliding){doRender();return}
+  sliding=true;
+  var out=(dir>0?'-100%':'100%'), inn=(dir>0?'100%':'-100%');
+  el.style.transition='transform .15s ease-in';
+  el.style.transform='translateX('+out+')';
+  setTimeout(function(){
+    doRender();
+    el.style.transition='none';
+    el.style.transform='translateX('+inn+')';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        el.style.transition='transform .17s ease-out';
+        el.style.transform='translateX(0)';
+        setTimeout(function(){
+          el.style.transition='';el.style.transform='';sliding=false;
+        },180);
+      });
+    });
+  },155);
+}
+function goMonth(n){slideSwap($('calView'),n,function(){shiftMonth(n)})}
+function goDay(n){slideSwap($('dayView'),n,function(){rep('day',shiftDay(curDate,n))})}
+
+$('prevM').addEventListener('click',function(){goMonth(-1)});
+$('nextM').addEventListener('click',function(){goMonth(1)});
 $('expBtn').addEventListener('click',function(){
   var b=new Blob([JSON.stringify(db)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(b);
@@ -1191,10 +1218,8 @@ function attachSwipe(el,onNext,onPrev){
     if(dx<0)onNext();else onPrev();
   },{passive:true});
 }
-attachSwipe($('calView'),function(){shiftMonth(1)},function(){shiftMonth(-1)});
-attachSwipe($('dayView'),
-  function(){rep('day',shiftDay(curDate,1))},
-  function(){rep('day',shiftDay(curDate,-1))});
+attachSwipe($('calView'),function(){goMonth(1)},function(){goMonth(-1)});
+attachSwipe($('dayView'),function(){goDay(1)},function(){goDay(-1)});
 
 /* 키보드 도구막대로 보이는 영역이 줄거나 밀릴 때 앱 높이를 맞춤 */
 function pinTop(){
