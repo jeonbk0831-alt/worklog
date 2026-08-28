@@ -1,9 +1,9 @@
-/* 업무일지 서비스 워커
-   - 화면 파일은 항상 인터넷에서 최신본을 먼저 확인 (업데이트가 바로 반영됨)
-   - 인터넷이 없으면 저장해둔 화면으로 실행
-   - 일지 내용은 여기와 무관하며 지워지지 않음 */
+/* 업무노트 서비스 워커
+   - 화면과 설정 파일은 항상 인터넷에서 최신본을 확인
+   - 인터넷이 없으면 저장해둔 것으로 실행
+   - 적어둔 내용은 여기와 무관하며 지워지지 않음 */
 
-const CACHE = 'worklog-cache';
+const CACHE = 'worknote-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -16,7 +16,11 @@ const ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(ASSETS))
+      .then(c => Promise.all(
+        ASSETS.map(u => fetch(u, { cache: 'reload' })
+          .then(r => (r && r.ok) ? c.put(u, r) : null)
+          .catch(() => null))
+      ))
       .then(() => self.skipWaiting())
   );
 });
@@ -33,19 +37,21 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
+  const url = new URL(req.url);
   const isPage = req.mode === 'navigate' ||
                  (req.headers.get('accept') || '').includes('text/html');
+  const isManifest = url.pathname.endsWith('manifest.json');
 
-  if (isPage) {
-    // 화면 파일: 인터넷 우선
+  if (isPage || isManifest) {
+    // 화면과 설정: 항상 최신본을 직접 확인
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then(res => {
           const copy = res.clone();
-          caches.open(CACHE).then(c => c.put('./index.html', copy));
+          caches.open(CACHE).then(c => c.put(isPage ? './index.html' : req, copy));
           return res;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match(isPage ? './index.html' : req))
     );
     return;
   }
