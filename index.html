@@ -15,9 +15,10 @@
 :root{
   --paper:#EDF0F3; --card:#fff; --ink:#16212B; --muted:#67788A; --faint:#9DAEBB;
   --rule:#D2DCE4; --rule-soft:#EBF1F5; --rule-row:#AEBFCC; --accent:#2B5CA8;
-  --done-bg:#E4F2E9; --done-ink:#1E6B41; --done-dot:#2E9E5B;
+  --done-bg:transparent; --done-ink:#9DAEBB; --done-dot:#5A6B7A;
   --due-dot:#E0A013; --due-bg:#FBF2DC; --danger:#B4453C;
   --trip:#C0392B; --trip-bg:#FBEDEB; --meet:#2B5CA8;
+  --vac:#2E7D32; --vac-bg:#E8F5E9;
   --fs:17px; --pad:16px;
 }
 @media (min-width:600px){:root{--fs:19px;--pad:22px}}
@@ -88,6 +89,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .ev i{font-weight:500;opacity:.8;letter-spacing:-.02em}
 .ev.t{background:var(--trip-bg);color:var(--trip)}
 .ev.m{background:#E8F0FA;color:var(--meet)}
+.ev.v{background:var(--vac-bg);color:var(--vac)}
 .calft .tools{display:flex;gap:10px}
 .calft .tools button{border:1px solid var(--rule);border-radius:9px;padding:9px 13px;
   background:var(--card);color:var(--muted)}
@@ -97,7 +99,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .legend{display:flex;gap:18px}
 .legend i{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:7px}
 .ver{color:var(--faint);font-size:.9em}
-.ev.d{background:var(--done-bg);color:var(--done-ink)}
+.ev.d{background:#F0F3F6;color:#71818E}
 
 /* ---------- 일지 ---------- */
 #dayView{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -108,7 +110,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .r.hd{background:#F5F8FA;color:var(--muted);font-size:.78em;font-weight:700}
 .r.hd>div{padding:11px 6px;text-align:center}
 .r>div+div{border-left:1px solid var(--rule-soft)}
-.r.done{background:var(--done-bg)}
+.r.done{background:transparent}
 .r.done textarea,.r.done .due{color:var(--done-ink)}
 .chk{display:grid;place-items:center;padding:0}
 .chk button{width:28px;height:28px;border:2px solid var(--faint);border-radius:6px;display:grid;place-items:center}
@@ -124,6 +126,9 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .meta input::placeholder{color:#B7C4CE}
 .meta input:focus::placeholder{color:transparent}
 .meta .mplace{border-left:1px solid var(--rule-soft);padding-left:10px}
+.meta.vac2{grid-template-columns:1fr 18px 1fr}
+.meta.vac2 .tld{display:grid;place-items:center;color:var(--faint);font-size:.76em}
+.meta.vac2 input{padding:0 6px 0 16px;text-align:left}
 .r textarea{width:100%;height:40px;resize:none;overflow:hidden;border:none;background:transparent;
   padding:0 12px 0 16px;line-height:40px;display:block;
   background-image:repeating-linear-gradient(to bottom,transparent 0 39px,var(--rule-soft) 39px 40px);
@@ -139,9 +144,13 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .cat button.t{color:var(--trip)}
 .cat button.m{color:var(--meet)}
 .cat button.w{color:var(--due-dot)}
+.cat button.v{color:var(--vac)}
+.r.done .cat button{color:var(--done-ink)}
 .cat button.newcat{width:100%;height:100%}
 .r.trip{background:var(--trip-bg)}
 .r.meet{background:#EAF1FA}
+.r.vac{background:var(--vac-bg)}
+.r.tdy{background:var(--due-bg)}
 .memo{display:grid;place-items:center;padding:0}
 .memo button{width:34px;height:34px;display:grid;place-items:center;color:#C2CDD6;border-radius:7px}
 .memo button.has{color:var(--accent)}
@@ -159,8 +168,8 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .pop p{margin:0 0 4px;font-size:.9em;color:var(--muted);line-height:1.5}
 .pop .qt{margin:10px 0 0;padding:14px;background:#F5F8FA;border-radius:10px;font-size:.9em;
   color:var(--ink);max-height:140px;overflow:hidden}
-.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
-.pick button{border:1px solid var(--rule);border-radius:10px;padding:16px 6px;font-weight:700}
+.pick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+.pick button{border:1px solid var(--rule);border-radius:10px;padding:16px 4px;font-weight:700;font-size:.92em}
 .pick button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .due .ph{color:#C4D0DA}
 .mv{display:grid;place-items:center;padding:0;touch-action:none}
@@ -288,7 +297,8 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot trip"></i>출장</span>
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
-        <span class="ver">v2.0 · 2026.08.28</span>
+        <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
+        <span class="ver">v2.1 · 2026.08.31</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -420,9 +430,10 @@ var db=read(), curDate=today(), curPid=null, sortMode=false, calY, calM;
 function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');
   clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('on')},1800)}
 
-var CATS=['업무','출장','회의'];
+var CATS=['업무','출장','회의','휴가'];
 function catOf(t){return t.cat||'업무'}
-function rank(t){if(t.done)return 3;var c=catOf(t);return c==='출장'?0:c==='회의'?1:2}
+function rank(t){if(t.done)return 4;var c=catOf(t);
+  return c==='출장'?0:c==='회의'?1:c==='휴가'?2:3}
 function crank(t){return rank(t)}
 function firstline(s){return (s||'').trim().split('\n')[0]}
 function timeVal(t){
@@ -437,7 +448,7 @@ function visible(d){
   return db.tasks.filter(function(t){
     if(!t.text||!t.text.trim())return t.made===d;
     var c=catOf(t);
-    if(c==='출장'||c==='회의')return t.due?t.due===d:t.made===d;
+    if(c==='출장'||c==='회의'||c==='휴가')return t.due?t.due===d:t.made===d;
     if(!t.done)return true;
     return t.made===d||t.due===d;
   }).sort(function(a,b){return rank(a)-rank(b)||a.seq-b.seq});
@@ -510,11 +521,17 @@ function renderCal(){
     var evh='',hasWork=false;
     evs.forEach(function(t){
       var k=catOf(t);
-      if(k==='출장'||k==='회의'){
-        var top=[t.time||'',t.place||''].filter(Boolean).join(' ');
-        evh+='<span class="ev '+(t.done?'d':k==='출장'?'t':'m')+'">'
+      if(k==='출장'||k==='회의'||k==='휴가'){
+        var top;
+        if(k==='휴가'){
+          top=(t.time||t.time2)?((t.time||'')+'~'+(t.time2||'')):'';
+        }else{
+          top=[t.time||'',t.place||''].filter(Boolean).join(' ');
+        }
+        var kc=t.done?'d':k==='출장'?'t':k==='회의'?'m':'v';
+        evh+='<span class="ev '+kc+'">'
           +(top?'<b>'+esc(top)+'</b>':'')
-          +'<i>'+esc(firstline(t.text))+'</i></span>';
+          +'<i>'+esc(firstline(t.text)||k)+'</i></span>';
       }else hasWork=true;
     });
     c.innerHTML='<div class="top"><span class="n">'+d+'</span>'
@@ -582,7 +599,9 @@ function taskRow(t,idx,total){
   var trip=catOf(t)==='출장';
   var r=document.createElement('div');r.setAttribute('data-id',t.id);
   r.setAttribute('data-rank',rank(t));
-  r.className='r'+(t.done?' done':trip?' trip':catOf(t)==='회의'?' meet':'');
+  var cc=catOf(t);
+  r.className='r'+(t.done?' done':trip?' trip':cc==='회의'?' meet':cc==='휴가'?' vac':
+    (t.due===today()?' tdy':''));
 
   var c1=document.createElement('div');
   if(sortMode){
@@ -599,20 +618,33 @@ function taskRow(t,idx,total){
 
   var c2=document.createElement('div');c2.className='c2';
   var mt=null;
-  if(trip||catOf(t)==='회의'){
-    mt=document.createElement('div');mt.className='meta';
-    var ti=document.createElement('input');ti.type='text';ti.className='mtime';
-    ti.setAttribute('inputmode','numeric');ti.setAttribute('maxlength','5');
-    ti.value=t.time||'';ti.setAttribute('aria-label','시간');ti.placeholder='시간';
-    ti.addEventListener('input',function(){
-      var d=ti.value.replace(/[^0-9]/g,'').slice(0,4);
-      ti.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d;
-      t.time=ti.value;save();
+  function timeInput(get,set,label){
+    var el=document.createElement('input');el.type='text';el.className='mtime';
+    el.setAttribute('inputmode','numeric');el.setAttribute('maxlength','5');
+    el.setAttribute('aria-label',label);el.placeholder=label;
+    el.value=get()||'';
+    el.addEventListener('input',function(){
+      var d=el.value.replace(/[^0-9]/g,'').slice(0,4);
+      el.value=d.length>2?d.slice(0,2)+':'+d.slice(2):d;
+      set(el.value);save();
     });
+    return el;
+  }
+
+  if(cc==='휴가'){
+    mt=document.createElement('div');mt.className='meta vac2';
+    mt.appendChild(timeInput(function(){return t.time},function(v){t.time=v},'시작'));
+    var tilde=document.createElement('div');tilde.className='tld';tilde.textContent='~';
+    mt.appendChild(tilde);
+    mt.appendChild(timeInput(function(){return t.time2},function(v){t.time2=v},'종료'));
+  }else if(trip||cc==='회의'){
+    mt=document.createElement('div');mt.className='meta';
+    mt.appendChild(timeInput(function(){return t.time},function(v){t.time=v},'시간'));
     var pl=document.createElement('input');pl.type='text';pl.className='mplace';
-    pl.value=t.place||'';pl.setAttribute('maxlength','24');pl.setAttribute('aria-label','장소');pl.placeholder='장소';
+    pl.value=t.place||'';pl.setAttribute('maxlength','24');
+    pl.setAttribute('aria-label','장소');pl.placeholder='장소';
     pl.addEventListener('input',function(){t.place=pl.value;save()});
-    mt.appendChild(ti);mt.appendChild(pl);
+    mt.appendChild(pl);
   }
   var ta=document.createElement('textarea');ta.value=t.text;ta.rows=1;
   ta.setAttribute('data-min','1');
@@ -653,7 +685,7 @@ function mkCat(t){
   var c=catOf(t);
   var b=document.createElement('button');
   b.textContent=c;
-  b.className=(c==='출장'?'t':c==='회의'?'m':c==='업무'?'w':'');
+  b.className=(c==='출장'?'t':c==='회의'?'m':c==='업무'?'w':c==='휴가'?'v':'');
   b.setAttribute('aria-label','구분 선택');
   b.addEventListener('click',function(){
     openCat(catOf(t),function(v){t.cat=v;write();focusId=t.id;renderDay()});
@@ -1212,7 +1244,7 @@ function attachSwipe(el,onNext,onPrev){
     var dx=e.touches[0].clientX-x0, dy=Math.abs(e.touches[0].clientY-y0);
     if(dy>40){live=false;return}
     // 손가락을 떼기 전에도 일정 거리 넘으면 바로 넘김
-    if(Math.abs(dx)>=28&&Math.abs(dx)>dy*1.2)fire(dx);
+    if(Math.abs(dx)>=46&&Math.abs(dx)>dy*1.2)fire(dx);
   },{passive:true});
   el.addEventListener('touchend',function(e){
     if(!live)return;
@@ -1223,7 +1255,7 @@ function attachSwipe(el,onNext,onPrev){
     if(ms>900)return;
     var t=e.changedTouches[0];
     var dx=t.clientX-x0, dy=Math.abs(t.clientY-y0);
-    var min=(ms<260)?14:20;
+    var min=(ms<260)?24:36;
     if(Math.abs(dx)<min||Math.abs(dx)<dy*1.1)return;
     if(dx<0)onNext();else onPrev();
   },{passive:true});
