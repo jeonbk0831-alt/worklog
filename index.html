@@ -255,21 +255,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
-/* ---------- PDF 저장(인쇄) ---------- */
-#printArea{display:none}
-@media print{
-  html,body{position:static!important;height:auto!important;width:auto!important;
-    overflow:visible!important;background:#fff!important;display:block!important;
-    top:auto!important;left:auto!important;right:auto!important;bottom:auto!important}
-  body>*{display:none!important}
-  #printArea{display:block!important;padding:0;color:#000}
-  #printArea h1{font-size:15pt;font-weight:700;margin:0 0 14pt;
-    padding-bottom:8pt;border-bottom:1.5pt solid #000}
-  #printArea .meta2{font-size:9pt;color:#555;margin:-8pt 0 14pt}
-  #printArea pre{font-family:inherit;white-space:pre-wrap;word-break:break-word;
-    font-size:11pt;line-height:1.75;margin:0}
-  @page{margin:14mm}
-}
+
 </style>
 </head>
 <body>
@@ -363,8 +349,6 @@ body.dragging{-webkit-user-select:none;user-select:none}
   <textarea id="nBody"></textarea>
   <div class="nsize" id="nSize"></div>
 </div>
-
-<div id="printArea"></div>
 
 <input type="file" id="fp" accept="application/json" hidden>
 <div class="toast" id="toast"></div>
@@ -951,17 +935,153 @@ $('nBody').addEventListener('input',function(){
   save();
 });
 $('nTitle').addEventListener('click',editTitle);
+/* ---------- PDF로 바로 저장 ---------- */
+var A4W=1240, A4H=1754, MG=83;          /* 150dpi 기준 A4와 여백 14mm */
+var PTW=595.28, PTH=841.89;
+
+function pdfEscName(t){
+  return (t||'메모').replace(/[\\/:*?"<>|\n\r]/g,' ').trim().slice(0,40)||'메모';
+}
+
+function wrapLines(ctx,text,maxW){
+  var out=[];
+  (text||'').split('\n').forEach(function(para){
+    if(!para){out.push('');return}
+    var line='';
+    for(var i=0;i<para.length;i++){
+      var ch=para[i];
+      if(ctx.measureText(line+ch).width>maxW&&line){out.push(line);line=ch}
+      else line+=ch;
+    }
+    out.push(line);
+  });
+  return out;
+}
+
+function makePages(title,when,body){
+  var rootFs=parseFloat(getComputedStyle(document.body).fontSize)||19;
+  var refW=Math.max(320,window.innerWidth-32);
+  var scale=(A4W-MG*2)/refW;                 /* 화면 대비 확대 비율 */
+  var fs=Math.round(rootFs*1.06*scale);
+  var lh=Math.round(40*scale);
+  var tfs=Math.round(rootFs*1.15*scale);
+  var fam='"Samsung Sans","SamsungOne","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif';
+
+  var probe=document.createElement('canvas').getContext('2d');
+  probe.font=fs+'px '+fam;
+  var maxW=A4W-MG*2;
+  var lines=wrapLines(probe,body,maxW);
+
+  var headH=Math.round(tfs*1.4+lh*0.9);
+  var pages=[], idx=0, first=true;
+  while(idx<lines.length||first){
+    var cv=document.createElement('canvas');
+    cv.width=A4W;cv.height=A4H;
+    var c=cv.getContext('2d');
+    c.fillStyle='#fff';c.fillRect(0,0,A4W,A4H);
+    c.textBaseline='top';
+    var y=MG;
+    if(first){
+      c.fillStyle='#000';c.font='700 '+tfs+'px '+fam;
+      var tl=wrapLines(c,title,maxW);
+      for(var k=0;k<tl.length;k++){c.fillText(tl[k],MG,y);y+=Math.round(tfs*1.35)}
+      y+=Math.round(tfs*0.25);
+      c.fillStyle='#000';c.fillRect(MG,y,maxW,2);
+      y+=Math.round(lh*0.35);
+      c.fillStyle='#666';c.font=Math.round(fs*0.72)+'px '+fam;
+      c.fillText(when,MG,y);
+      y+=Math.round(lh*0.9);
+      first=false;
+    }
+    c.fillStyle='#111';c.font=fs+'px '+fam;
+    while(idx<lines.length&&y+lh<=A4H-MG){
+      c.fillText(lines[idx],MG,y+Math.round((lh-fs)/2));
+      y+=lh;idx++;
+    }
+    pages.push(cv.toDataURL('image/jpeg',0.92).split(',')[1]);
+    if(idx>=lines.length)break;
+  }
+  return pages;
+}
+
+function buildPdf(jpegs){
+  var chunks=[], len=0, offs=[];
+  function put(x){
+    var a;
+    if(typeof x==='string'){
+      a=new Uint8Array(x.length);
+      for(var i=0;i<x.length;i++)a[i]=x.charCodeAt(i)&0xff;
+    }else a=x;
+    chunks.push(a);len+=a.length;
+  }
+  function b64bytes(b64){
+    var bin=atob(b64), a=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);
+    return a;
+  }
+
+  var n=jpegs.length;
+  var total=2+n*3;                 /* 카탈로그, 페이지목록, 페이지별 3개 */
+  put('%PDF-1.3\n');
+
+  function obj(num,body,stream){
+    offs[num]=len;
+    put(num+' 0 obj\n'+body+'\n');
+    if(stream){put('stream\n');put(stream);put('\nendstream\n')}
+    put('endobj\n');
+  }
+
+  var kids='';
+  for(var i=0;i<n;i++)kids+=(3+i*3)+' 0 R ';
+  obj(1,'<</Type/Catalog/Pages 2 0 R>>');
+  obj(2,'<</Type/Pages/Kids['+kids.trim()+']/Count '+n+'>>');
+
+  for(var p=0;p<n;p++){
+    var pg=3+p*3, ct=pg+1, im=pg+2;
+    obj(pg,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 '+PTW+' '+PTH+']'
+      +'/Resources<</XObject<</Im0 '+im+' 0 R>>>>/Contents '+ct+' 0 R>>');
+    var cs='q '+PTW+' 0 0 '+PTH+' 0 0 cm /Im0 Do Q';
+    obj(ct,'<</Length '+cs.length+'>>',cs);
+    var bytes=b64bytes(jpegs[p]);
+    obj(im,'<</Type/XObject/Subtype/Image/Width '+A4W+'/Height '+A4H
+      +'/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length '+bytes.length+'>>',bytes);
+  }
+
+  var xref=len;
+  var x='xref\n0 '+(total+1)+'\n0000000000 65535 f \n';
+  for(var q=1;q<=total;q++){
+    x+=('0000000000'+offs[q]).slice(-10)+' 00000 n \n';
+  }
+  x+='trailer\n<</Size '+(total+1)+'/Root 1 0 R>>\nstartxref\n'+xref+'\n%%EOF\n';
+  put(x);
+
+  var out=new Uint8Array(len), at=0;
+  chunks.forEach(function(c){out.set(c,at);at+=c.length});
+  return out;
+}
+
 $('nPdf').addEventListener('click',function(){
   var t=noteTarget();if(!t)return;
   var body=noteBody();
   if(!body.trim()){toast('내용이 없습니다');return}
-  var d=new Date();
-  var when=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate();
-  $('printArea').innerHTML='<h1>'+esc(noteTitle()||'메모')+'</h1>'
-    +'<div class="meta2">'+when+'</div>'
-    +'<pre>'+esc(body)+'</pre>';
-  setTimeout(function(){window.print()},60);
+  toast('PDF를 만드는 중입니다');
+  setTimeout(function(){
+    try{
+      var d=new Date();
+      var when=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate();
+      var title=noteTitle()||'메모';
+      var pages=makePages(title,when,body);
+      var bytes=buildPdf(pages);
+      var url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+      var a=document.createElement('a');
+      a.href=url;a.download='[K-note] '+pdfEscName(title)+'('+today()+').pdf';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url)},4000);
+      toast('저장했습니다');
+    }catch(err){toast('PDF를 만들지 못했습니다')}
+  },40);
 });
+
 $('nBack').addEventListener('click',closeNote);
 $('nClose').addEventListener('click',closeNote);
 $('nPop').addEventListener('click',function(){setNoteMode('float')});
