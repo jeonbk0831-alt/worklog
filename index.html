@@ -150,7 +150,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .r.trip{background:var(--trip-bg)}
 .r.meet{background:#EAF1FA}
 .r.vac{background:var(--vac-bg)}
-.r.tdy{background:var(--due-bg)}
+.r.tdy{background:#FCEBBE}
 .memo{display:grid;place-items:center;padding:0}
 .memo button{width:34px;height:34px;display:grid;place-items:center;color:#C2CDD6;border-radius:7px}
 .memo button.has{color:var(--accent)}
@@ -300,7 +300,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.2 · 2026.09.01</span>
+        <span class="ver">v2.3 · 2026.09.01</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -605,8 +605,9 @@ function taskRow(t,idx,total){
   var r=document.createElement('div');r.setAttribute('data-id',t.id);
   r.setAttribute('data-rank',rank(t));
   var cc=catOf(t);
+  var isToday=!!t.due&&String(t.due).slice(0,10)===today();
   r.className='r'+(t.done?' done':trip?' trip':cc==='회의'?' meet':cc==='휴가'?' vac':
-    (t.due===today()?' tdy':''));
+    (isToday?' tdy':''));
 
   var c1=document.createElement('div');
   if(sortMode){
