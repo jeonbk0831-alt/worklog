@@ -605,7 +605,7 @@ function taskRow(t,idx,total){
   var r=document.createElement('div');r.setAttribute('data-id',t.id);
   r.setAttribute('data-rank',rank(t));
   var cc=catOf(t);
-  var isToday=!!t.due&&String(t.due).slice(0,10)===today();
+  var isToday=!!t.due&&String(t.due).slice(0,10)===curDate;
   r.className='r'+(t.done?' done':trip?' trip':cc==='회의'?' meet':cc==='휴가'?' vac':
     (isToday?' tdy':''));
 
