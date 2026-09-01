@@ -937,7 +937,7 @@ $('nBody').addEventListener('input',function(){
 });
 $('nTitle').addEventListener('click',editTitle);
 /* ---------- PDF로 바로 저장 ---------- */
-var A4W=1240, A4H=1754, MG=59;          /* 150dpi 기준 A4와 여백 10mm */
+var A4W=3307, A4H=4677, MG=157;         /* 400dpi 기준 A4와 여백 10mm */
 var PTW=595.28, PTH=841.89;
 
 function pdfEscName(t){
@@ -1016,14 +1016,15 @@ function makePages(title,body){
     c.textAlign='center';
     c.fillText(title,MG+cw/2,MG+barH/2);
     c.textAlign='left';
+    var lw=Math.max(2,Math.round(scale*0.55));
     c.fillStyle='#D2DCE4';
-    c.fillRect(MG,MG+barH-1,cw,1.5);
+    c.fillRect(MG,Math.round(MG+barH-lw),cw,lw);
 
     /* 본문: 줄무늬와 글씨 */
     var y=bodyTop, n=0;
     while(n<perPage&&y+lh<=A4H-MG){
-      c.fillStyle='#EBF1F5';
-      c.fillRect(MG,y+lh-1,cw,1.2);
+      c.fillStyle='#E2EAF0';
+      c.fillRect(MG,Math.round(y+lh-lw),cw,lw);
       if(idx<lines.length&&lines[idx]!==''){
         c.fillStyle='#16212B';c.font=fs+'px '+fam;
         c.fillText(lines[idx],MG+padX,y+lh/2);
@@ -1032,7 +1033,7 @@ function makePages(title,body){
       y+=lh;n++;
     }
 
-    pages.push(cv.toDataURL('image/jpeg',0.94).split(',')[1]);
+    pages.push(cv.toDataURL('image/jpeg',0.98).split(',')[1]);
   }while(idx<lines.length);
   return pages;
 }
