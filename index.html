@@ -254,6 +254,22 @@ body.dragging{-webkit-user-select:none;user-select:none}
   pointer-events:none;transition:opacity .2s,transform .2s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- PDF 저장(인쇄) ---------- */
+#printArea{display:none}
+@media print{
+  html,body{position:static!important;height:auto!important;width:auto!important;
+    overflow:visible!important;background:#fff!important;display:block!important;
+    top:auto!important;left:auto!important;right:auto!important;bottom:auto!important}
+  body>*{display:none!important}
+  #printArea{display:block!important;padding:0;color:#000}
+  #printArea h1{font-size:15pt;font-weight:700;margin:0 0 14pt;
+    padding-bottom:8pt;border-bottom:1.5pt solid #000}
+  #printArea .meta2{font-size:9pt;color:#555;margin:-8pt 0 14pt}
+  #printArea pre{font-family:inherit;white-space:pre-wrap;word-break:break-word;
+    font-size:11pt;line-height:1.75;margin:0}
+  @page{margin:14mm}
+}
 </style>
 </head>
 <body>
@@ -298,7 +314,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.1 · 2026.08.31</span>
+        <span class="ver">v2.2 · 2026.09.01</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -331,6 +347,9 @@ body.dragging{-webkit-user-select:none;user-select:none}
       <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
     <div class="nt" id="nTitle"></div>
+    <button class="nbtn" id="nPdf" aria-label="PDF로 저장">
+      <svg viewBox="0 0 24 24"><path d="M12 3v10M8 10l4 4 4-4"/><path d="M4 17v3h16v-3"/></svg>
+    </button>
     <button class="nbtn" id="nPop" aria-label="팝업으로">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="9" y="11" width="11" height="9" rx="1.5"/></svg>
     </button>
@@ -344,6 +363,8 @@ body.dragging{-webkit-user-select:none;user-select:none}
   <textarea id="nBody"></textarea>
   <div class="nsize" id="nSize"></div>
 </div>
+
+<div id="printArea"></div>
 
 <input type="file" id="fp" accept="application/json" hidden>
 <div class="toast" id="toast"></div>
@@ -670,7 +691,7 @@ function mkMemo(t){
   b.className=(t.memo&&t.memo.trim())?'has':'';
   b.innerHTML='<svg viewBox="0 0 24 24"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>'
     +'<path d="M9 12h6M9 16h4"/></svg>';
-  b.addEventListener('click',function(){openMemo(t,b)});
+  b.addEventListener('click',function(){openNote(t.id,'memo')});
   return b;
 }
 
@@ -765,7 +786,7 @@ function renderPlist(){
     var name=document.createElement('button');
     name.className='pn';name.textContent=p.title||'제목 없음';
     if(!p.title)name.style.color='var(--faint)';
-    name.addEventListener('click',function(){openNote(p.id)});
+    name.addEventListener('click',function(){openNote(p.id,'prj')});
     row.appendChild(name);
 
     var d=document.createElement('div');d.className='del';
@@ -795,7 +816,7 @@ function blankPrjRow(){
 
 function newPrj(){
   var p={id:uid('P'),title:'',body:'',seq:db.pseq++,made:today()};
-  db.projects.push(p);write();renderPlist();openNote(p.id);
+  db.projects.push(p);write();renderPlist();openNote(p.id,'prj');
 }
 
 function openDelPrj(p){
@@ -817,7 +838,7 @@ function openDelPrj(p){
 }
 
 /* ---------- 노트 창 ---------- */
-var noteOpen=false, noteMode='full';
+var noteOpen=false, noteMode='full', noteKind='prj';
 
 function noteBox(){
   var b=db.noteBox||{};
@@ -857,45 +878,90 @@ function setNoteMode(m){
   }
 }
 
-function paintTitle(p){
-  var t=$('nTitle');
-  t.textContent=p.title||'제목을 눌러 입력하세요';
-  t.style.color=p.title?'':'var(--faint)';
+/* 지금 열린 노트의 대상 */
+function noteTarget(){
+  return noteKind==='prj' ? prjById(curPid) : byId(curPid);
+}
+function noteTitle(){
+  var t=noteTarget();
+  if(!t)return '';
+  if(noteKind==='prj')return t.title||'';
+  return firstline(t.text)||'메모';
+}
+function noteBody(){
+  var t=noteTarget();
+  if(!t)return '';
+  return (noteKind==='prj'?t.body:t.memo)||'';
+}
+
+function paintTitle(){
+  var el=$('nTitle');
+  var v=noteTitle();
+  if(noteKind==='prj'){
+    el.textContent=v||'제목을 눌러 입력하세요';
+    el.style.color=v?'':'var(--faint)';
+    el.style.cursor='pointer';
+  }else{
+    el.textContent=v;el.style.color='';el.style.cursor='default';
+  }
 }
 function editTitle(){
+  if(noteKind!=='prj')return;
   var p=prjById(curPid);if(!p)return;
   openPrompt('과제명',p.title,function(v){
-    p.title=v;write();paintTitle(p);renderPlist();
+    p.title=v;write();paintTitle();renderPlist();
   });
 }
-function openNote(id){
-  var p=prjById(id);if(!p)return;
-  curPid=id;noteOpen=true;
+
+function openNote(id,kind){
+  noteKind=kind||'prj';
+  var t=noteTarget.call(null)||null;
+  curPid=id;
+  t=noteTarget();
+  if(!t)return;
+  noteOpen=true;
   $('noteWin').classList.remove('hide');
-  paintTitle(p);
-  var ta=$('nBody');ta.value=p.body||'';ta.scrollTop=0;
+  paintTitle();
+  var ta=$('nBody');ta.value=noteBody();ta.scrollTop=0;
   setNoteMode('full');
-  if(!p.title)setTimeout(editTitle,150);
+  if(noteKind==='prj'&&!t.title)setTimeout(editTitle,150);
 }
+
 function closeNote(){
   if(!noteOpen)return;
   saveBox();
   noteOpen=false;
   $('noteWin').classList.add('hide');
-  // 제목도 내용도 비어 있으면 없던 일로
-  var p=prjById(curPid);
-  if(p&&!(p.title||'').trim()&&!(p.body||'').trim()){
-    var i=db.projects.indexOf(p);if(i>-1)db.projects.splice(i,1);
-    write();
+  if(noteKind==='prj'){
+    var p=prjById(curPid);
+    if(p&&!(p.title||'').trim()&&!(p.body||'').trim()){
+      var i=db.projects.indexOf(p);if(i>-1)db.projects.splice(i,1);
+      write();
+    }
+    renderPlist();
+  }else{
+    renderDay();
   }
-  renderPlist();
 }
 
 $('nBody').addEventListener('input',function(){
-  var p=prjById(curPid);
-  if(p){p.body=this.value;save()}
+  var t=noteTarget();
+  if(!t)return;
+  if(noteKind==='prj')t.body=this.value; else t.memo=this.value;
+  save();
 });
 $('nTitle').addEventListener('click',editTitle);
+$('nPdf').addEventListener('click',function(){
+  var t=noteTarget();if(!t)return;
+  var body=noteBody();
+  if(!body.trim()){toast('내용이 없습니다');return}
+  var d=new Date();
+  var when=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate();
+  $('printArea').innerHTML='<h1>'+esc(noteTitle()||'메모')+'</h1>'
+    +'<div class="meta2">'+when+'</div>'
+    +'<pre>'+esc(body)+'</pre>';
+  setTimeout(function(){window.print()},60);
+});
 $('nBack').addEventListener('click',closeNote);
 $('nClose').addEventListener('click',closeNote);
 $('nPop').addEventListener('click',function(){setNoteMode('float')});
@@ -996,23 +1062,6 @@ function openDel(t,arr,after){
     var i=arr.indexOf(t);
     if(i>-1)arr.splice(i,1);
     write();closePop();after();toast('삭제했습니다');
-  });
-  $('pno').addEventListener('click',closePop);
-  ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
-}
-
-function openMemo(t,btn){
-  closePop();
-  var ov=document.createElement('div');ov.className='ov';
-  ov.innerHTML='<div class="pop big"><h3>메모</h3>'
-    +'<textarea id="pmm"></textarea>'
-    +'<div class="row"><button class="no" id="pno">취소</button>'
-    +'<button class="ok" id="pok">저장</button></div></div>';
-  document.body.appendChild(ov);popEl=ov;
-  var ta=$('pmm');ta.value=t.memo||'';
-  $('pok').addEventListener('click',function(){
-    t.memo=ta.value;write();closePop();
-    if(btn)btn.className=(t.memo&&t.memo.trim())?'has':'';
   });
   $('pno').addEventListener('click',closePop);
   ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
