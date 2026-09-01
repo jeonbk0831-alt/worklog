@@ -860,6 +860,7 @@ function setNoteMode(m){
     $('nFull').classList.remove('hide');
     $('nClose').classList.remove('hide');
   }
+  if(typeof applyPageGuide==='function')applyPageGuide();
 }
 
 /* 지금 열린 노트의 대상 */
@@ -936,7 +937,7 @@ $('nBody').addEventListener('input',function(){
 });
 $('nTitle').addEventListener('click',editTitle);
 /* ---------- PDF로 바로 저장 ---------- */
-var A4W=1240, A4H=1754, MG=83;          /* 150dpi 기준 A4와 여백 14mm */
+var A4W=1240, A4H=1754, MG=59;          /* 150dpi 기준 A4와 여백 10mm */
 var PTW=595.28, PTH=841.89;
 
 function pdfEscName(t){
@@ -958,49 +959,81 @@ function wrapLines(ctx,text,maxW){
   return out;
 }
 
-function makePages(title,when,body){
+function linesPerPage(){
   var rootFs=parseFloat(getComputedStyle(document.body).fontSize)||19;
-  var refW=Math.max(320,window.innerWidth-32);
-  var scale=(A4W-MG*2)/refW;                 /* 화면 대비 확대 비율 */
-  var fs=Math.round(rootFs*1.06*scale);
-  var lh=Math.round(40*scale);
-  var tfs=Math.round(rootFs*1.15*scale);
+  var refW=Math.max(320,window.innerWidth);
+  var scale=(A4W-MG*2)/refW;
+  var lh=40*scale, tfs=rootFs*1.1*scale, barPad=11*scale;
+  var barH=tfs*1.4+barPad*2;
+  return Math.max(1,Math.floor((A4H-MG-(MG+barH))/lh));
+}
+
+/* 화면에 출력 페이지 경계 표시 */
+function applyPageGuide(){
+  var ta=$('nBody');
+  if(noteMode!=='full'){ta.style.backgroundImage='';return}
+  var h=linesPerPage()*40;
+  ta.style.backgroundImage=
+    'repeating-linear-gradient(to bottom,transparent 0 '+(h-2)+'px,'
+    +'#AEBFCC '+(h-2)+'px,#AEBFCC '+h+'px),'
+    +'repeating-linear-gradient(to bottom,transparent 0 39px,#EBF1F5 39px,#EBF1F5 40px)';
+}
+
+function makePages(title,body){
+  var rootFs=parseFloat(getComputedStyle(document.body).fontSize)||19;
+  var refW=Math.max(320,window.innerWidth);
+  var cw=A4W-MG*2;                       /* 내용 폭 */
+  var scale=cw/refW;                     /* 화면 → 종이 확대 비율 */
+
+  /* 반올림하지 않아야 화면과 줄 바꿈 위치가 정확히 같아짐 */
+  var fs=rootFs*1.06*scale;              /* 본문 */
+  var lh=40*scale;                       /* 줄 간격 */
+  var tfs=rootFs*1.1*scale;              /* 제목 */
+  var padX=16*scale;                     /* 좌우 여백 */
+  var barPad=11*scale;
   var fam='"Samsung Sans","SamsungOne","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif';
 
   var probe=document.createElement('canvas').getContext('2d');
   probe.font=fs+'px '+fam;
-  var maxW=A4W-MG*2;
-  var lines=wrapLines(probe,body,maxW);
+  var wrapW=(refW-32)*scale;             /* 화면 입력칸 폭을 그대로 비례 */
+  var lines=wrapLines(probe,body,wrapW);
 
-  var headH=Math.round(tfs*1.4+lh*0.9);
-  var pages=[], idx=0, first=true;
-  while(idx<lines.length||first){
+  var barH=tfs*1.4+barPad*2;
+  var bodyTop=MG+barH;
+  var perPage=linesPerPage();
+
+  var pages=[], idx=0;
+  do{
     var cv=document.createElement('canvas');
     cv.width=A4W;cv.height=A4H;
     var c=cv.getContext('2d');
     c.fillStyle='#fff';c.fillRect(0,0,A4W,A4H);
-    c.textBaseline='top';
-    var y=MG;
-    if(first){
-      c.fillStyle='#000';c.font='700 '+tfs+'px '+fam;
-      var tl=wrapLines(c,title,maxW);
-      for(var k=0;k<tl.length;k++){c.fillText(tl[k],MG,y);y+=Math.round(tfs*1.35)}
-      y+=Math.round(tfs*0.25);
-      c.fillStyle='#000';c.fillRect(MG,y,maxW,2);
-      y+=Math.round(lh*0.35);
-      c.fillStyle='#666';c.font=Math.round(fs*0.72)+'px '+fam;
-      c.fillText(when,MG,y);
-      y+=Math.round(lh*0.9);
-      first=false;
+    c.textBaseline='middle';
+
+    /* 제목줄 */
+    c.fillStyle='#16212B';
+    c.font='700 '+tfs+'px '+fam;
+    c.textAlign='center';
+    c.fillText(title,MG+cw/2,MG+barH/2);
+    c.textAlign='left';
+    c.fillStyle='#D2DCE4';
+    c.fillRect(MG,MG+barH-1,cw,1.5);
+
+    /* 본문: 줄무늬와 글씨 */
+    var y=bodyTop, n=0;
+    while(n<perPage&&y+lh<=A4H-MG){
+      c.fillStyle='#EBF1F5';
+      c.fillRect(MG,y+lh-1,cw,1.2);
+      if(idx<lines.length&&lines[idx]!==''){
+        c.fillStyle='#16212B';c.font=fs+'px '+fam;
+        c.fillText(lines[idx],MG+padX,y+lh/2);
+      }
+      if(idx<lines.length)idx++;
+      y+=lh;n++;
     }
-    c.fillStyle='#111';c.font=fs+'px '+fam;
-    while(idx<lines.length&&y+lh<=A4H-MG){
-      c.fillText(lines[idx],MG,y+Math.round((lh-fs)/2));
-      y+=lh;idx++;
-    }
-    pages.push(cv.toDataURL('image/jpeg',0.92).split(',')[1]);
-    if(idx>=lines.length)break;
-  }
+
+    pages.push(cv.toDataURL('image/jpeg',0.94).split(',')[1]);
+  }while(idx<lines.length);
   return pages;
 }
 
@@ -1067,10 +1100,8 @@ $('nPdf').addEventListener('click',function(){
   toast('PDF를 만드는 중입니다');
   setTimeout(function(){
     try{
-      var d=new Date();
-      var when=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate();
       var title=noteTitle()||'메모';
-      var pages=makePages(title,when,body);
+      var pages=makePages(title,body);
       var bytes=buildPdf(pages);
       var url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
       var a=document.createElement('a');
@@ -1439,6 +1470,7 @@ function pinTop(){
 }
 function fitView(){
   pinTop();
+  if(noteOpen&&typeof applyPageGuide==='function')applyPageGuide();
   var vv=window.visualViewport;
   if(!vv)return;
   var b=document.body.style;
