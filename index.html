@@ -937,7 +937,8 @@ $('nBody').addEventListener('input',function(){
 });
 $('nTitle').addEventListener('click',editTitle);
 /* ---------- PDF로 바로 저장 ---------- */
-var A4W=3307, A4H=4677, MG=157;         /* 400dpi 기준 A4와 여백 10mm */
+var A4W=4961, A4H=7016, MG=236;         /* 600dpi 기준 A4와 여백 10mm */
+var BANDS=6;                            /* 한 장을 그릴 때 나누는 가로띠 수 */
 var PTW=595.28, PTH=841.89;
 
 function pdfEscName(t){
@@ -982,63 +983,79 @@ function applyPageGuide(){
 function makePages(title,body){
   var rootFs=parseFloat(getComputedStyle(document.body).fontSize)||19;
   var refW=Math.max(320,window.innerWidth);
-  var cw=A4W-MG*2;                       /* 내용 폭 */
-  var scale=cw/refW;                     /* 화면 → 종이 확대 비율 */
+  var cw=A4W-MG*2;
+  var scale=cw/refW;
 
-  /* 반올림하지 않아야 화면과 줄 바꿈 위치가 정확히 같아짐 */
-  var fs=rootFs*1.06*scale;              /* 본문 */
-  var lh=40*scale;                       /* 줄 간격 */
-  var tfs=rootFs*1.1*scale;              /* 제목 */
-  var padX=16*scale;                     /* 좌우 여백 */
+  var fs=rootFs*1.06*scale;
+  var lh=40*scale;
+  var tfs=rootFs*1.1*scale;
+  var padX=16*scale;
   var barPad=11*scale;
   var fam='"Samsung Sans","SamsungOne","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif';
 
   var probe=document.createElement('canvas').getContext('2d');
   probe.font=fs+'px '+fam;
-  var wrapW=(refW-32)*scale;             /* 화면 입력칸 폭을 그대로 비례 */
-  var lines=wrapLines(probe,body,wrapW);
+  var lines=wrapLines(probe,body,(refW-32)*scale);
 
   var barH=tfs*1.4+barPad*2;
   var bodyTop=MG+barH;
   var perPage=linesPerPage();
+  var lw=Math.max(2,Math.round(scale*0.4));
 
-  var pages=[], idx=0;
-  do{
-    var cv=document.createElement('canvas');
-    cv.width=A4W;cv.height=A4H;
-    var c=cv.getContext('2d');
-    c.fillStyle='#fff';c.fillRect(0,0,A4W,A4H);
-    c.textBaseline='middle';
+  /* 한 장을 그리는 절차 */
+  function drawPage(from){
+    return function(c){
+      c.textBaseline='middle';
+      c.fillStyle='#16212B';
+      c.font='700 '+tfs+'px '+fam;
+      c.textAlign='center';
+      c.fillText(title,MG+cw/2,MG+barH/2);
+      c.textAlign='left';
+      c.fillStyle='#D2DCE4';
+      c.fillRect(MG,Math.round(MG+barH-lw),cw,lw);
 
-    /* 제목줄 */
-    c.fillStyle='#16212B';
-    c.font='700 '+tfs+'px '+fam;
-    c.textAlign='center';
-    c.fillText(title,MG+cw/2,MG+barH/2);
-    c.textAlign='left';
-    var lw=Math.max(2,Math.round(scale*0.55));
-    c.fillStyle='#D2DCE4';
-    c.fillRect(MG,Math.round(MG+barH-lw),cw,lw);
-
-    /* 본문: 줄무늬와 글씨 */
-    var y=bodyTop, n=0;
-    while(n<perPage&&y+lh<=A4H-MG){
-      c.fillStyle='#E2EAF0';
-      c.fillRect(MG,Math.round(y+lh-lw),cw,lw);
-      if(idx<lines.length&&lines[idx]!==''){
-        c.fillStyle='#16212B';c.font=fs+'px '+fam;
-        c.fillText(lines[idx],MG+padX,y+lh/2);
+      var y=bodyTop;
+      for(var n=0;n<perPage;n++){
+        c.fillStyle='#E2EAF0';
+        c.fillRect(MG,Math.round(y+lh-lw),cw,lw);
+        var li=from+n;
+        if(li<lines.length&&lines[li]!==''){
+          c.fillStyle='#16212B';c.font=fs+'px '+fam;
+          c.fillText(lines[li],MG+padX,y+lh/2);
+        }
+        y+=lh;
       }
-      if(idx<lines.length)idx++;
-      y+=lh;n++;
-    }
+    };
+  }
 
-    pages.push(cv.toDataURL('image/jpeg',0.98).split(',')[1]);
-  }while(idx<lines.length);
+  /* 큰 그림은 기기가 한 번에 못 그리므로 가로띠로 나눠 그림 */
+  function raster(draw){
+    var bands=[], N=BANDS, bh=Math.ceil(A4H/N);
+    for(var i=0;i<N;i++){
+      var top=i*bh, h=Math.min(bh,A4H-top);
+      if(h<=0)break;
+      var cv=document.createElement('canvas');
+      cv.width=A4W;cv.height=h;
+      var c=cv.getContext('2d');
+      c.fillStyle='#fff';c.fillRect(0,0,A4W,h);
+      c.save();c.translate(0,-top);
+      draw(c);
+      c.restore();
+      bands.push({d:cv.toDataURL('image/jpeg',0.97).split(',')[1],y:top,h:h});
+      cv.width=1;cv.height=1;
+    }
+    return bands;
+  }
+
+  var pages=[], from=0;
+  do{
+    pages.push(raster(drawPage(from)));
+    from+=perPage;
+  }while(from<lines.length);
   return pages;
 }
 
-function buildPdf(jpegs){
+function buildPdf(pages){
   var chunks=[], len=0, offs=[];
   function put(x){
     var a;
@@ -1053,11 +1070,6 @@ function buildPdf(jpegs){
     for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);
     return a;
   }
-
-  var n=jpegs.length;
-  var total=2+n*3;                 /* 카탈로그, 페이지목록, 페이지별 3개 */
-  put('%PDF-1.3\n');
-
   function obj(num,body,stream){
     offs[num]=len;
     put(num+' 0 obj\n'+body+'\n');
@@ -1065,27 +1077,47 @@ function buildPdf(jpegs){
     put('endobj\n');
   }
 
-  var kids='';
-  for(var i=0;i<n;i++)kids+=(3+i*3)+' 0 R ';
-  obj(1,'<</Type/Catalog/Pages 2 0 R>>');
-  obj(2,'<</Type/Pages/Kids['+kids.trim()+']/Count '+n+'>>');
+  /* 오브젝트 번호 미리 배정 */
+  var num=3, plan=[];
+  pages.forEach(function(bands){
+    var p={page:num++,cont:num++,imgs:[]};
+    bands.forEach(function(){p.imgs.push(num++)});
+    plan.push(p);
+  });
+  var total=num-1;
 
-  for(var p=0;p<n;p++){
-    var pg=3+p*3, ct=pg+1, im=pg+2;
-    obj(pg,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 '+PTW+' '+PTH+']'
-      +'/Resources<</XObject<</Im0 '+im+' 0 R>>>>/Contents '+ct+' 0 R>>');
-    var cs='q '+PTW+' 0 0 '+PTH+' 0 0 cm /Im0 Do Q';
-    obj(ct,'<</Length '+cs.length+'>>',cs);
-    var bytes=b64bytes(jpegs[p]);
-    obj(im,'<</Type/XObject/Subtype/Image/Width '+A4W+'/Height '+A4H
-      +'/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length '+bytes.length+'>>',bytes);
-  }
+  put('%PDF-1.3\n');
+
+  var kids='';
+  plan.forEach(function(p){kids+=p.page+' 0 R '});
+  obj(1,'<</Type/Catalog/Pages 2 0 R>>');
+  obj(2,'<</Type/Pages/Kids['+kids.trim()+']/Count '+pages.length+'>>');
+
+  pages.forEach(function(bands,pi){
+    var p=plan[pi];
+    var xo='';
+    p.imgs.forEach(function(n,k){xo+='/Im'+k+' '+n+' 0 R '});
+    obj(p.page,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 '+PTW+' '+PTH+']'
+      +'/Resources<</XObject<<'+xo.trim()+'>>>>/Contents '+p.cont+' 0 R>>');
+
+    var cs='';
+    bands.forEach(function(b,k){
+      var hPt=PTH*b.h/A4H;
+      var yPt=PTH*(1-(b.y+b.h)/A4H);
+      cs+='q '+PTW.toFixed(2)+' 0 0 '+hPt.toFixed(3)+' 0 '+yPt.toFixed(3)+' cm /Im'+k+' Do Q\n';
+    });
+    obj(p.cont,'<</Length '+cs.length+'>>',cs);
+
+    bands.forEach(function(b,k){
+      var bytes=b64bytes(b.d);
+      obj(p.imgs[k],'<</Type/XObject/Subtype/Image/Width '+A4W+'/Height '+b.h
+        +'/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length '+bytes.length+'>>',bytes);
+    });
+  });
 
   var xref=len;
   var x='xref\n0 '+(total+1)+'\n0000000000 65535 f \n';
-  for(var q=1;q<=total;q++){
-    x+=('0000000000'+offs[q]).slice(-10)+' 00000 n \n';
-  }
+  for(var q=1;q<=total;q++)x+=('0000000000'+(offs[q]||0)).slice(-10)+' 00000 n \n';
   x+='trailer\n<</Size '+(total+1)+'/Root 1 0 R>>\nstartxref\n'+xref+'\n%%EOF\n';
   put(x);
 
