@@ -220,9 +220,11 @@ body.dragging{-webkit-user-select:none;user-select:none}
 .nbtn:active{background:rgba(22,33,43,.08)}
 .nbtn svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
 #noteWin.float .nbtn svg{width:18px;height:18px}
-#nBody{flex:1;min-height:0;width:100%;border:none;background:transparent;resize:none;display:block;
-  font-size:1.06em;line-height:40px;padding:0 16px;overflow-y:auto;
-  -webkit-overflow-scrolling:touch;box-sizing:border-box;
+.nscroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain}
+#nBody{width:100%;border:none;background:transparent;resize:none;display:block;
+  font-size:1.06em;line-height:40px;padding:0 16px;overflow:hidden;
+  box-sizing:border-box;
   background-image:repeating-linear-gradient(to bottom,transparent 0 39px,var(--rule-soft) 39px 40px);
   background-attachment:local}
 #nBody:focus{outline:none}
@@ -346,7 +348,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
       <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
-  <textarea id="nBody"></textarea>
+  <div class="nscroll" id="nScroll"><textarea id="nBody"></textarea></div>
   <div class="nsize" id="nSize"></div>
 </div>
 
@@ -861,7 +863,7 @@ function setNoteMode(m){
     $('nFull').classList.remove('hide');
     $('nClose').classList.remove('hide');
   }
-  if(typeof applyPageGuide==='function')applyPageGuide();
+  if(typeof layoutNote==='function')layoutNote();
 }
 
 /* 지금 열린 노트의 대상 */
@@ -908,8 +910,10 @@ function openNote(id,kind){
   noteOpen=true;
   $('noteWin').classList.remove('hide');
   paintTitle();
-  var ta=$('nBody');ta.value=noteBody();ta.scrollTop=0;
+  var ta=$('nBody');ta.value=noteBody();
+  notePages=1;
   setNoteMode('full');
+  $('nScroll').scrollTop=0;
   if(noteKind==='prj'&&!t.title)setTimeout(editTitle,150);
 }
 
@@ -934,7 +938,7 @@ $('nBody').addEventListener('input',function(){
   var t=noteTarget();
   if(!t)return;
   if(noteKind==='prj')t.body=this.value; else t.memo=this.value;
-  save();
+  save();layoutNote();
 });
 $('nTitle').addEventListener('click',editTitle);
 /* ---------- PDF로 바로 저장 ---------- */
@@ -969,6 +973,70 @@ function linesPerPage(){
   var barH=tfs*1.4+barPad*2;
   return Math.max(1,Math.floor((A4H-MG-(MG+barH))/lh));
 }
+
+/* ---------- 노트를 종이처럼 다루기 ---------- */
+var notePages=1;
+
+function countVisualLines(){
+  var ta=$('nBody'), cs=getComputedStyle(ta);
+  var w=ta.clientWidth-parseFloat(cs.paddingLeft||0)-parseFloat(cs.paddingRight||0);
+  if(!(w>0))return 1;
+  var c=document.createElement('canvas').getContext('2d');
+  c.font=cs.fontSize+' '+cs.fontFamily;
+  return Math.max(1,wrapLines(c,ta.value,w).length);
+}
+
+function layoutNote(){
+  var ta=$('nBody');
+  if(noteMode!=='full'){
+    ta.style.height='';ta.style.backgroundImage='';
+    return;
+  }
+  var per=linesPerPage();
+  var need=Math.max(1,Math.ceil(countVisualLines()/per));
+  if(notePages<need)notePages=need;
+  ta.style.height=(notePages*per*40)+'px';
+  applyPageGuide();
+}
+
+function addNotePage(){
+  if(noteMode!=='full')return;
+  if(notePages>=40){toast('더 늘릴 수 없습니다');return}
+  notePages++;layoutNote();toast(notePages+'번째 장');
+}
+
+/* 빈 줄을 눌러 그 자리부터 쓰기 */
+$('nBody').addEventListener('click',function(e){
+  if(noteMode!=='full')return;
+  var ta=this, r=ta.getBoundingClientRect();
+  var idx=Math.floor((e.clientY-r.top)/40);
+  if(idx<0)return;
+  var cur=countVisualLines();
+  if(idx<cur)return;
+  var add=idx-cur+1, pad='';
+  while(pad.length<add)pad+='\n';
+  ta.value+=pad;
+  var t=noteTarget();
+  if(t){if(noteKind==='prj')t.body=ta.value;else t.memo=ta.value;save()}
+  ta.selectionStart=ta.selectionEnd=ta.value.length;
+  layoutNote();
+  ta.focus();
+});
+
+/* 아래 끝에서 위로 밀면 한 장 추가 */
+(function(){
+  var sc=$('nScroll'), y0=0, armed=false;
+  sc.addEventListener('touchstart',function(e){
+    armed=false;
+    if(noteMode!=='full'||!e.touches.length)return;
+    y0=e.touches[0].clientY;
+    armed=(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-6);
+  },{passive:true});
+  sc.addEventListener('touchmove',function(e){
+    if(!armed||!e.touches.length)return;
+    if(y0-e.touches[0].clientY>70){armed=false;addNotePage()}
+  },{passive:true});
+})();
 
 /* 화면에 출력 페이지 경계 표시 */
 function applyPageGuide(){
@@ -1504,7 +1572,7 @@ function pinTop(){
 }
 function fitView(){
   pinTop();
-  if(noteOpen&&typeof applyPageGuide==='function')applyPageGuide();
+  if(noteOpen&&typeof layoutNote==='function')layoutNote();
   var vv=window.visualViewport;
   if(!vv)return;
   var b=document.body.style;
