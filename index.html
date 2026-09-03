@@ -458,7 +458,15 @@ function visible(d){
     if(c==='출장'||c==='회의'||c==='휴가')return t.due?t.due===d:t.made===d;
     if(!t.done)return true;
     return t.made===d||t.due===d;
-  }).sort(function(a,b){return rank(a)-rank(b)||a.seq-b.seq});
+  }).sort(function(a,b){
+    var r=rank(a)-rank(b);
+    if(r)return r;
+    if(rank(a)===3){                       /* 일반 업무만 날짜순 */
+      var da=a.due||'9999-99-99', dbb=b.due||'9999-99-99';
+      if(da!==dbb)return da<dbb?-1:1;
+    }
+    return a.seq-b.seq;
+  });
 }
 function dueOn(d){return db.tasks.filter(function(t){return t.due===d})}
 
@@ -605,7 +613,8 @@ var focusId=null;
 function taskRow(t,idx,total){
   var trip=catOf(t)==='출장';
   var r=document.createElement('div');r.setAttribute('data-id',t.id);
-  r.setAttribute('data-rank',rank(t));
+  r.setAttribute('data-rank',
+    rank(t)===3?('3|'+(t.due||'~')):String(rank(t)));
   var cc=catOf(t);
   var isToday=!!t.due&&String(t.due).slice(0,10)===curDate;
   r.className='r'+(t.done?' done':trip?' trip':cc==='회의'?' meet':cc==='휴가'?' vac':
@@ -988,19 +997,22 @@ function countVisualLines(){
 
 function layoutNote(){
   var ta=$('nBody'), sc=$('nScroll');
+  var keep=sc?sc.scrollTop:0;          /* 보던 위치 유지 */
   if(noteMode!=='full'){
     /* 팝업일 때는 내용 높이만큼 늘리고 창이 스크롤을 맡음 */
     ta.style.backgroundImage='';
     ta.style.height='auto';
-    var fit=Math.max(ta.scrollHeight, sc.clientHeight||0);
-    ta.style.height=fit+'px';
-    return;
+    var fit=Math.max(ta.scrollHeight, sc?sc.clientHeight:0)+'px';
+    ta.style.height=fit;
+  }else{
+    var per=linesPerPage();
+    var need=Math.max(1,Math.ceil(countVisualLines()/per));
+    if(notePages<need)notePages=need;
+    var h=(notePages*per*40)+'px';
+    if(ta.style.height!==h)ta.style.height=h;
+    applyPageGuide();
   }
-  var per=linesPerPage();
-  var need=Math.max(1,Math.ceil(countVisualLines()/per));
-  if(notePages<need)notePages=need;
-  ta.style.height=(notePages*per*40)+'px';
-  applyPageGuide();
+  if(sc&&sc.scrollTop!==keep)sc.scrollTop=keep;
 }
 
 function addNotePage(){
@@ -1281,6 +1293,7 @@ $('nFull').addEventListener('click',function(){saveBox();setNoteMode('full')});
 /* ================= 공용 ================= */
 function byId(id){
   for(var i=0;i<db.tasks.length;i++)if(db.tasks[i].id===id)return db.tasks[i];
+  for(var j=0;j<db.projects.length;j++)if(db.projects[j].id===id)return db.projects[j];
   return null;
 }
 
@@ -1577,7 +1590,11 @@ function pinTop(){
 }
 function fitView(){
   pinTop();
-  if(noteOpen&&typeof layoutNote==='function')layoutNote();
+  if(noteOpen&&typeof layoutNote==='function'){
+    var a=document.activeElement;
+    var inNote=a&&$('noteWin').contains(a);
+    if(inNote||noteMode==='full')layoutNote();
+  }
   var vv=window.visualViewport;
   if(!vv)return;
   var b=document.body.style;
