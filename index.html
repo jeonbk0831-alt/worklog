@@ -302,7 +302,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.3 · 2026.09.01</span>
+        <span class="ver">v2.4 · 2026.09.03</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -987,9 +987,13 @@ function countVisualLines(){
 }
 
 function layoutNote(){
-  var ta=$('nBody');
+  var ta=$('nBody'), sc=$('nScroll');
   if(noteMode!=='full'){
-    ta.style.height='';ta.style.backgroundImage='';
+    /* 팝업일 때는 내용 높이만큼 늘리고 창이 스크롤을 맡음 */
+    ta.style.backgroundImage='';
+    ta.style.height='auto';
+    var fit=Math.max(ta.scrollHeight, sc.clientHeight||0);
+    ta.style.height=fit+'px';
     return;
   }
   var per=linesPerPage();
@@ -1248,6 +1252,7 @@ $('nFull').addEventListener('click',function(){saveBox();setNoteMode('full')});
   function stop(){
     if(!mode)return;
     mode=null;document.body.classList.remove('dragging');saveBox();
+    if(typeof layoutNote==='function')layoutNote();
   }
 
   function wire(el,kind){
