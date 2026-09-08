@@ -16,6 +16,7 @@
   --paper:#EDF0F3; --card:#fff; --ink:#16212B; --muted:#67788A; --faint:#9DAEBB;
   --rule:#D2DCE4; --rule-soft:#EBF1F5; --rule-row:#AEBFCC; --accent:#2B5CA8;
   --done-bg:transparent; --done-ink:#9DAEBB; --done-dot:#5A6B7A;
+  --hair:1.143px;
   --due-dot:#E0A013; --due-bg:#FBF2DC; --danger:#B4453C;
   --trip:#C0392B; --trip-bg:#FBEDEB; --meet:#2B5CA8;
   --vac:#2E7D32; --vac-bg:#E8F5E9;
@@ -72,11 +73,15 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .cell.void{border-top:1px solid var(--rule-soft);background:#FAFBFC}
 .cell.sun .n{color:#C25A52} .cell.sat .n{color:var(--accent)}
 .cell.holi .n{color:#C0392B;font-weight:700}
-.cell .n{min-width:1.6em;height:1.6em;line-height:1.6em;font-size:.84em;text-align:center;border-radius:50%;flex:none}
-.cell.today .n{background:var(--ink);color:#fff}
+.cell .n{min-width:1.75em;height:1.75em;font-size:.84em;flex:none;
+  display:flex;align-items:center;justify-content:center;padding:0 2px;
+  border-radius:50%;box-sizing:border-box;border:var(--hair) solid transparent}
+.cell .n.work{border-color:var(--due-dot);font-weight:700}
+.cell.today{background:var(--due-bg)}
+.cell.today .n{font-weight:700}
 .cell:active{background:#F1F5FA}
-.top{display:flex;align-items:center;gap:5px;width:100%;min-height:1.7em}
-.hn{flex:1;min-width:0;font-size:10.5px;color:#C0392B;font-weight:600;
+.top{display:flex;align-items:center;gap:4px;width:100%;min-height:1.7em}
+.hn{flex:1;min-width:0;margin-left:2px;font-size:10.5px;color:#C0392B;font-weight:600;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 .dots{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-start}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--due-dot);flex:none}
@@ -302,7 +307,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.4 · 2026.09.03</span>
+        <span class="ver">v2.5 · 2026.09.08</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -549,9 +554,9 @@ function renderCal(){
           +'<i>'+esc(firstline(t.text)||k)+'</i></span>';
       }else hasWork=true;
     });
-    c.innerHTML='<div class="top"><span class="n">'+d+'</span>'
+    c.innerHTML='<div class="top"><span class="n'+(hasWork?' work':'')+'">'+d+'</span>'
       +(HOLIDAYS[ds]?'<span class="hn">'+HOLIDAYS[ds]+'</span>':'<span class="hn"></span>')
-      +(hasWork?'<span class="dot"></span>':'')+'</div>'+evh;
+      +'</div>'+evh;
     (function(x){c.addEventListener('click',function(){nav('day',x)})})(ds);
     g.appendChild(c);
   }
@@ -982,6 +987,15 @@ function linesPerPage(){
   var barH=tfs*1.4+barPad*2;
   return Math.max(1,Math.floor((A4H-MG-(MG+barH))/lh));
 }
+
+/* 기기 화면 배율에 맞춰 테두리 두께를 정수 픽셀로 맞춤 */
+function fitHair(){
+  var dpr=window.devicePixelRatio||1;
+  var w=2/dpr;                       /* 물리 2픽셀이 되도록 */
+  document.documentElement.style.setProperty('--hair',w.toFixed(4)+'px');
+}
+fitHair();
+window.addEventListener('resize',fitHair);
 
 /* ---------- 노트를 종이처럼 다루기 ---------- */
 var notePages=1;
