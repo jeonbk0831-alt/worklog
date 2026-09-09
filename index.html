@@ -307,7 +307,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.5 · 2026.09.08</span>
+        <span class="ver">v2.6 · 2026.09.09</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -732,6 +732,23 @@ function mkCheck(t,after){
   return b;
 }
 
+/* 입력 중이면 첫 터치는 입력 끝내기, 두 번째 터치부터 새로 만들기.
+   누르는 순간 커서가 옮겨가므로 그 직전 상태를 미리 기억해둔다. */
+var lastEdit=null;
+document.addEventListener('pointerdown',function(){
+  var a=document.activeElement;
+  lastEdit=(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT')
+    &&!a.readOnly&&!$('noteWin').contains(a))?a:null;
+},true);
+
+function typing(){return !!lastEdit}
+function endTyping(){
+  if(lastEdit&&lastEdit.blur)lastEdit.blur();
+  var a=document.activeElement;
+  if(a&&a.blur)a.blur();
+  lastEdit=null;
+}
+
 function blankRow(){
   var r=document.createElement('div');r.className='r';r.setAttribute('data-blank','1');
   var c1=document.createElement('div');c1.className='cat';r.appendChild(c1);
@@ -743,6 +760,7 @@ function blankRow(){
   var c5=document.createElement('div');c5.className='del';
   ta.readOnly=true;
   function start(){
+    if(typing()){endTyping();return}
     openCat('',function(v){
       var nt={id:uid('t'),cat:v,text:'',due:null,time:'',place:'',
         done:false,made:curDate,seq:db.seq++};
@@ -809,7 +827,10 @@ function blankPrjRow(){
   if(sortMode)row.appendChild(document.createElement('div'));
   var name=document.createElement('button');
   name.className='pn';name.textContent='.';
-  name.addEventListener('click',newPrj);
+  name.addEventListener('click',function(){
+    if(typing()){endTyping();return}
+    newPrj();
+  });
   row.appendChild(name);
   row.appendChild(document.createElement('div'));
   return row;
