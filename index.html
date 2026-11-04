@@ -316,7 +316,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.8 · 2026.11.05</span>
+        <span class="ver">v2.9 · 2026.11.05</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -968,7 +968,7 @@ function openNote(id,kind){
   noteOpen=true;
   $('noteWin').classList.remove('hide');
   paintTitle();
-  notePages=1;noteCur=0;noteBounds=[0];
+  noteCur=0;noteBounds=[0];
   setNoteMode('full');
   if(noteKind==='prj'&&!t.title)setTimeout(editTitle,150);
 }
@@ -1035,7 +1035,6 @@ fitHair();
 window.addEventListener('resize',fitHair);
 
 /* ---------- 노트: 좌우로 한 장씩 ---------- */
-var notePages=1;      /* 최소 장수 */
 var noteCur=0;        /* 지금 보는 장 */
 var noteBounds=[0];   /* 장별 시작 글자 위치 */
 var composing=false;  /* 한글 조합 중 */
@@ -1091,7 +1090,7 @@ function computeBounds(text){
   c.font=m.f;
   var lines=wrapRanges(c,text,m.w);
   var per=perPageLines();
-  var pages=Math.max(notePages,Math.ceil(lines.length/per)||1);
+  var pages=Math.max(1,Math.ceil(lines.length/per)||1);
   var b=[];
   for(var p=0;p<pages;p++){
     var li=p*per;
@@ -1160,14 +1159,18 @@ function doDelPage(){
   var n=noteBounds.length-1;
   if(n<=1)return;
   var text=noteBody();
-  var next=text.slice(0,noteBounds[noteCur])+text.slice(noteBounds[noteCur+1]);
-  /* 글이 차지하는 장 수보다 아래로는 못 줄이므로 그만큼만 남긴다 */
-  notePages=1;
-  var fit=computeBounds(next).length-1;
-  notePages=Math.max(fit, n-1);
+  var a=noteBounds[noteCur], b=noteBounds[noteCur+1];
+  var next=text.slice(0,a)+text.slice(b);
+  /* 마지막 장을 지웠다면 장이 하나 줄 때까지만 끝의 줄바꿈을 걷어낸다 */
+  if(noteCur===n-1){
+    var guard=0;
+    while(computeBounds(next).length-1>=n && /\n$/.test(next) && guard++<400){
+      next=next.slice(0,-1);
+    }
+  }
   var t=noteTarget();
   if(t){if(noteKind==='prj')t.body=next;else t.memo=next;write()}
-  var go=Math.max(0,Math.min(noteCur,notePages-1));
+  var go=Math.max(0,Math.min(noteCur,computeBounds(next).length-2));
   buildPages(next,go,null);
   toast('지웠습니다');
 }
@@ -1191,14 +1194,31 @@ function goPage(i){
   noteCur=i;slidePage(true);paintPg();
 }
 
+/* 맨 뒤에 빈 장을 하나 만든다 (줄바꿈으로 자리를 잡음) */
+function appendBlankPage(){
+  var n=noteBounds.length-1;
+  if(n>=40){toast('장을 더 만들 수 없습니다');return -1}
+  var text=noteBody();
+  var per=perPageLines();
+  var m=noteFont();
+  var c=document.createElement('canvas').getContext('2d');
+  c.font=m.f;
+  var used=wrapRanges(c,text,m.w).length;      /* 지금 글이 쓰는 줄 수 */
+  var need=n*per-used+1;                        /* 다음 장 첫 줄까지 */
+  var pad='';
+  for(var i=0;i<Math.max(1,need);i++)pad+='\n';
+  text+=pad;
+  var t=noteTarget();
+  if(t){if(noteKind==='prj')t.body=text;else t.memo=text;write()}
+  buildPages(text,n,null);
+  goPage(n);
+  return n;
+}
+
 function addNotePage(){
   if(noteMode!=='full')return;
-  if(notePages>=40){toast('더 늘릴 수 없습니다');return}
-  var n=noteBounds.length-1;
-  notePages=n+1;
-  buildPages(noteBody(),noteCur,null);
-  goPage(n);
-  toast(notePages+'장');
+  var i=appendBlankPage();
+  if(i>=0)toast((i+1)+'장');
 }
 
 /* 글을 고쳤을 때 전체를 다시 나눔 */
@@ -1211,7 +1231,6 @@ function reflow(ta){
   if(t){if(noteKind==='prj')t.body=text;else t.memo=text;save()}
   if(composing)return;
   var before=noteBounds.slice();
-  notePages=Math.max(notePages,before.length-1);   /* 만들어둔 장은 유지 */
   var after=computeBounds(text);
   var same=(before.length===after.length);
   if(same)for(var i=0;i<after.length;i++)if(before[i]!==after[i]){same=false;break}
@@ -1258,7 +1277,7 @@ function layoutNote(){
 }
 
 /* ---------- 음성으로 입력 ---------- */
-var rec=null, recOn=false, recTA=null, recPos=0;
+var rec=null, recOn=false, recTA=null, recPos=0, recIdle=null, recGot=false;
 
 function recSupport(){
   return window.SpeechRecognition||window.webkitSpeechRecognition||null;
@@ -1278,18 +1297,8 @@ function recStart(){
   if(noteMode!=='full'){toast('전체화면에서 녹음할 수 있습니다');return}
 
   /* 받아적을 새 장을 맨 뒤에 만들고 그 맨 앞부터 적는다 */
-  var n=noteBounds.length-1;        /* 지금 장 수 */
-  if(n>=40){toast('장을 더 만들 수 없습니다');return}
-  var text=noteBody();
-  /* 마지막 장에 글이 있으면 줄바꿈으로 경계를 만들어 둔다 */
-  if(pageText(text,n-1).trim()&&!/\n$/.test(text)){
-    text+='\n';
-    var t0=noteTarget();
-    if(t0){if(noteKind==='prj')t0.body=text;else t0.memo=text;write()}
-  }
-  notePages=n+1;
-  buildPages(text,n,null);
-  goPage(n);
+  var made=appendBlankPage();
+  if(made<0)return;
 
   var pg=$('nTrack').children[noteCur];
   recTA=pg?pg.querySelector('textarea'):null;
@@ -1307,13 +1316,19 @@ function recStart(){
     for(var i=e.resultIndex;i<e.results.length;i++){
       if(e.results[i].isFinal){
         var t=(e.results[i][0].transcript||'').trim();
-        if(t)recPut(t);
+        if(t){recGot=true;recPut(t);recArm(2600)}
+      }else{
+        recArm(6000);   /* 말하는 중에는 넉넉히 */
       }
     }
   };
   rec.onerror=function(e){
     var k=e&&e.error;
-    if(k==='no-speech'||k==='aborted')return;
+    if(k==='no-speech'){          /* 한동안 말이 없으면 끝낸다 */
+      if(recOn&&recGot)recStop();
+      return;
+    }
+    if(k==='aborted')return;
     if(k==='not-allowed'||k==='service-not-allowed'){
       recOn=false;recUI(false);recTA=null;
       toast('마이크 사용을 허용해 주세요');
@@ -1322,12 +1337,21 @@ function recStart(){
     toast('음성 인식에 문제가 있습니다');
   };
   rec.onend=function(){
-    /* 안드로이드는 말이 끊기면 저절로 멈추므로 다시 켠다 */
-    if(recOn){try{rec.start()}catch(e){}}
+    /* 안드로이드는 잠시 조용하면 저절로 멈추므로 다시 켠다 */
+    if(recOn){setTimeout(function(){if(recOn){try{rec.start()}catch(e){}}},120)}
   };
 
-  recOn=true;recUI(true);
-  try{rec.start()}catch(e){recOn=false;recUI(false);toast('음성 입력을 시작하지 못했습니다')}
+  recOn=true;recGot=false;recUI(true);
+  try{rec.start()}catch(e){recOn=false;recUI(false);toast('음성 입력을 시작하지 못했습니다');return}
+  recArm(9000);   /* 아무 말도 없으면 9초 뒤 종료 */
+}
+
+/* 말이 끊긴 지 일정 시간이 지나면 자동으로 끝낸다 */
+function recArm(ms){
+  clearTimeout(recIdle);
+  recIdle=setTimeout(function(){
+    if(recOn)recStop();
+  },ms);
 }
 
 /* 한 마디를 그 자리에 적고 커서를 뒤로 옮긴다 */
@@ -1357,8 +1381,11 @@ function recPut(t){
 }
 
 function recStop(){
+  if(!recOn)return;
   recOn=false;recUI(false);
+  clearTimeout(recIdle);
   if(rec){try{rec.stop()}catch(e){}}
+  toast(recGot?'받아적었습니다':'인식된 말이 없습니다');
   setTimeout(function(){recTA=null},300);
 }
 
