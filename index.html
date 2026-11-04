@@ -327,7 +327,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.9 · 2026.11.05</span>
+        <span class="ver">v3.0 · 2026.11.05</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -1181,6 +1181,8 @@ function doDelPage(){
     while(computeBounds(next).length-1>=n && /\n$/.test(next) && guard++<400){
       next=next.slice(0,-1);
     }
+    /* 마지막 장이 되었으면 끝의 빈 줄은 더 남겨둘 이유가 없다 */
+    if(computeBounds(next).length-1<=1)next=next.replace(/\n+$/,'');
   }
   var t=noteTarget();
   if(t){if(noteKind==='prj')t.body=next;else t.memo=next;write()}
@@ -1252,6 +1254,20 @@ function reflow(ta){
   buildPages(text,null,caret);
 }
 
+/* 전체 글 기준 위치에 커서를 놓고 키보드를 다시 띄운다 */
+function focusAt(caret){
+  var n=noteBounds.length-1;
+  var p=0;
+  for(var i=0;i<n;i++)if(caret>=noteBounds[i])p=i;
+  var pg=$('nTrack').children[p];
+  var ta=pg?pg.querySelector('textarea'):null;
+  if(!ta)return;
+  if(p!==noteCur){noteCur=p;slidePage(false);paintPg()}
+  var loc=Math.max(0,Math.min(caret-noteBounds[p],ta.value.length));
+  ta.focus();
+  try{ta.setSelectionRange(loc,loc)}catch(e){}
+}
+
 function wirePages(){
   var tas=$('nTrack').querySelectorAll('textarea');
   for(var i=0;i<tas.length;i++){
@@ -1277,7 +1293,10 @@ function wirePages(){
         var pad='';while(pad.length<idx-cur+1)pad+='\n';
         ta.value+=pad;
         ta.selectionStart=ta.selectionEnd=ta.value.length;
+        var p=+ta.getAttribute('data-p');
+        var caret=noteBounds[p]+ta.value.length;
         reflow(ta);
+        focusAt(caret);
       });
     })(tas[i]);
   }
@@ -1997,11 +2016,6 @@ function pinTop(){
 function fitView(){
   pinTop();
   if(noteOpen&&typeof slidePage==='function')slidePage(false);
-  if(noteOpen&&typeof layoutNote==='function'){
-    var a=document.activeElement;
-    var inNote=a&&$('noteWin').contains(a);
-    if(inNote||noteMode==='full')layoutNote();
-  }
   var vv=window.visualViewport;
   if(!vv)return;
   var b=document.body.style;
@@ -2013,7 +2027,13 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize',fitView);
   window.visualViewport.addEventListener('scroll',fitView);
 }
-window.addEventListener('resize',fitView);
+var noteW=0;
+window.addEventListener('resize',function(){
+  fitView();
+  if(!noteOpen)return;
+  var w=$('nScroll').clientWidth;
+  if(w&&w!==noteW){noteW=w;if(typeof layoutNote==='function')layoutNote()}
+});
 window.addEventListener('orientationchange',function(){setTimeout(fitView,150)});
 document.addEventListener('focusin',function(){
   setTimeout(fitView,50);setTimeout(fitView,250);setTimeout(fitView,600);
