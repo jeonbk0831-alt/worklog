@@ -223,12 +223,9 @@ body.dragging{-webkit-user-select:none;user-select:none}
 .nbtn{flex:none;width:42px;height:42px;display:grid;place-items:center;border-radius:10px;color:var(--muted)}
 #noteWin.float .nbtn{width:34px;height:34px}
 .nbtn:active{background:rgba(22,33,43,.08)}
-.nbtn.rec{color:#fff;background:var(--danger);animation:recblink 1.1s ease-in-out infinite}
-@keyframes recblink{0%,100%{opacity:1}50%{opacity:.55}}
-.recbar{position:absolute;left:0;right:0;top:0;z-index:2;
-  background:var(--danger);color:#fff;font-size:.8em;font-weight:600;
-  text-align:center;padding:7px 10px;display:none}
-.recbar.on{display:block}
+.nbtn.rec{color:var(--danger)}
+.nbtn.rec svg{animation:recpulse 1.2s ease-in-out infinite}
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.35}}
 .nbtn svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
 #noteWin.float .nbtn svg{width:18px;height:18px}
 .nscroll{flex:1;min-height:0;overflow:hidden;position:relative;touch-action:pan-y}
@@ -351,6 +348,9 @@ body.dragging{-webkit-user-select:none;user-select:none}
     </button>
     <div class="nt" id="nTitle"></div>
     <div class="npg hide" id="nPg"></div>
+    <button class="nbtn hide" id="nPgDel" aria-label="이 장 삭제">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+    </button>
     <button class="nbtn" id="nPdf" aria-label="PDF로 저장">
       <svg viewBox="0 0 24 24"><path d="M12 3v10M8 10l4 4 4-4"/><path d="M4 17v3h16v-3"/></svg>
     </button>
@@ -369,7 +369,6 @@ body.dragging{-webkit-user-select:none;user-select:none}
     </button>
   </div>
   <div class="nscroll" id="nScroll">
-    <div class="recbar" id="nRecBar">녹음 중입니다. 마이크를 다시 누르면 끝납니다.</div>
     <div class="ntrack" id="nTrack"></div>
   </div>
   <div class="nsize" id="nSize"></div>
@@ -1132,11 +1131,38 @@ function buildPages(text,focusPage,caret){
 
 function paintPg(){
   var n=noteBounds.length-1;
-  var el=$('nPg');
-  if(noteMode!=='full'||n<=1){el.classList.add('hide');return}
+  var el=$('nPg'), db=$('nPgDel');
+  if(noteMode!=='full'||n<=1){
+    el.classList.add('hide');db.classList.add('hide');return;
+  }
   el.classList.remove('hide');
   el.textContent=(noteCur+1)+' / '+n;
+  db.classList.remove('hide');
 }
+
+/* 지금 보는 장을 지운다 */
+function delNotePage(){
+  var n=noteBounds.length-1;
+  if(noteMode!=='full'||n<=1)return;
+  var body=pageText(noteBody(),noteCur);
+  if(body.trim()){
+    openConfirm('장 삭제','이 장에 적은 내용이 함께 지워집니다. 되돌릴 수 없습니다.',
+      body.trim(),'삭제',doDelPage);
+  }else doDelPage();
+}
+function doDelPage(){
+  var n=noteBounds.length-1;
+  if(n<=1)return;
+  var text=noteBody();
+  var next=text.slice(0,noteBounds[noteCur])+text.slice(noteBounds[noteCur+1]);
+  var t=noteTarget();
+  if(t){if(noteKind==='prj')t.body=next;else t.memo=next;write()}
+  notePages=Math.max(1,n-1);
+  var go=Math.max(0,Math.min(noteCur,notePages-1));
+  buildPages(next,go,null);
+  toast('지웠습니다');
+}
+$('nPgDel').addEventListener('click',delNotePage);
 
 function pageW(){return $('nScroll').clientWidth||1}
 function slidePage(anim){
@@ -1222,44 +1248,52 @@ function layoutNote(){
 }
 
 /* ---------- 음성으로 입력 ---------- */
-var rec=null, recOn=false, recText=[], recTA=null, recPos=0;
+var rec=null, recOn=false, recTA=null, recPos=0;
 
 function recSupport(){
   return window.SpeechRecognition||window.webkitSpeechRecognition||null;
 }
 
 function recUI(on){
-  $('nMic').classList[on?'add':'remove']('rec');
-  $('nRecBar').classList[on?'add':'remove']('on');
+  var b=$('nMic');
+  b.classList[on?'add':'remove']('rec');
+  b.setAttribute('aria-label',on?'녹음 중 · 누르면 끝':'음성으로 입력');
 }
 
 function recStart(){
   var SR=recSupport();
   if(!SR){toast('이 브라우저에서는 음성 입력을 쓸 수 없습니다');return}
 
-  /* 글자를 넣을 자리를 미리 잡아둔다 */
-  var a=document.activeElement;
-  if(a&&a.tagName==='TEXTAREA'&&$('nTrack').contains(a)){
-    recTA=a;recPos=a.selectionStart;
-  }else{
-    var pg=$('nTrack').children[noteCur];
-    recTA=pg?pg.querySelector('textarea'):null;
-    recPos=recTA?recTA.value.length:0;
-  }
-  if(!recTA){toast('먼저 노트를 열어주세요');return}
+  if(!noteOpen){toast('먼저 노트를 열어주세요');return}
+  if(noteMode!=='full'){toast('전체화면에서 녹음할 수 있습니다');return}
 
-  recText=[];
+  /* 받아적을 새 장을 맨 뒤에 만들고 그 맨 앞부터 적는다 */
+  var text=noteBody();
+  if(!/\n$/.test(text))text+='\n';
+  var t0=noteTarget();
+  if(t0){if(noteKind==='prj')t0.body=text;else t0.memo=text;write()}
+  var n=computeBounds(text).length-1;
+  notePages=n+1;
+  buildPages(text,n,null);
+  goPage(n);
+
+  var pg=$('nTrack').children[noteCur];
+  recTA=pg?pg.querySelector('textarea'):null;
+  if(!recTA){toast('녹음할 자리를 만들지 못했습니다');return}
+  recPos=0;
+
   try{rec=new SR()}catch(e){toast('음성 입력을 시작하지 못했습니다');return}
   rec.lang='ko-KR';
   rec.continuous=true;
   rec.interimResults=false;
   rec.maxAlternatives=1;
 
+  /* 말이 끝나는 대로 그때그때 적어 넣는다 */
   rec.onresult=function(e){
     for(var i=e.resultIndex;i<e.results.length;i++){
       if(e.results[i].isFinal){
         var t=(e.results[i][0].transcript||'').trim();
-        if(t)recText.push(t);
+        if(t)recPut(t);
       }
     }
   };
@@ -1267,7 +1301,7 @@ function recStart(){
     var k=e&&e.error;
     if(k==='no-speech'||k==='aborted')return;
     if(k==='not-allowed'||k==='service-not-allowed'){
-      recOn=false;recUI(false);
+      recOn=false;recUI(false);recTA=null;
       toast('마이크 사용을 허용해 주세요');
       return;
     }
@@ -1282,29 +1316,36 @@ function recStart(){
   try{rec.start()}catch(e){recOn=false;recUI(false);toast('음성 입력을 시작하지 못했습니다')}
 }
 
-function recStop(){
-  recOn=false;recUI(false);
-  if(rec){try{rec.stop()}catch(e){}}
-  setTimeout(recApply,250);
-}
-
-function recApply(){
-  if(!recTA||!recText.length){
-    if(recTA&&!recText.length)toast('인식된 말이 없습니다');
-    recTA=null;return;
+/* 한 마디를 그 자리에 적고 커서를 뒤로 옮긴다 */
+function recPut(t){
+  var ta=recTA;
+  if(!ta||!ta.isConnected){
+    /* 장이 다시 짜이면 같은 자리의 입력칸을 다시 찾는다 */
+    var pg=$('nTrack').children[noteCur];
+    ta=pg?pg.querySelector('textarea'):null;
+    if(!ta)return;
+    recTA=ta;recPos=ta.value.length;
   }
-  var ta=recTA;recTA=null;
-  var body=recText.join('\n');
-  recText=[];
   var v=ta.value, p=Math.max(0,Math.min(recPos,v.length));
   var pre=v.slice(0,p), post=v.slice(p);
   if(pre&&!/\n$/.test(pre))pre+='\n';
-  var ins=pre+body+'\n';
+  if(!pre&&/^\n/.test(post))post=post.replace(/^\n+/,'');
+  var ins=pre+t+'\n';
   ta.value=ins+post;
-  ta.selectionStart=ta.selectionEnd=ins.length;
-  ta.focus();
+  recPos=ins.length;
+  ta.selectionStart=ta.selectionEnd=recPos;
   reflow(ta);
-  toast('받아적었습니다');
+  /* 글이 밀려 다음 장으로 넘어갔으면 그 장의 입력칸으로 옮겨간다 */
+  var cur=$('nTrack').children[noteCur];
+  var now=cur?cur.querySelector('textarea'):null;
+  if(now&&now!==ta){recTA=now;recPos=Math.min(recPos,now.value.length)}
+  else recTA=ta;
+}
+
+function recStop(){
+  recOn=false;recUI(false);
+  if(rec){try{rec.stop()}catch(e){}}
+  setTimeout(function(){recTA=null},300);
 }
 
 $('nMic').addEventListener('click',function(){
@@ -1316,12 +1357,13 @@ $('nMic').addEventListener('click',function(){
   var sc=$('nScroll');
   var x0=0,y0=0,base=0,W=0,n=1,drag=false,decided=false,dxLast=0;
   var MOVE=60;     /* 장을 넘기는 거리 */
-  var PULL=150;    /* 장을 추가하는 거리 */
+  var PULL=0;      /* 장을 추가하는 거리 (화면 폭에 맞춰 계산) */
 
   sc.addEventListener('touchstart',function(e){
     drag=false;decided=false;dxLast=0;
     if(noteMode!=='full'||e.touches.length!==1)return;
     W=pageW();n=noteBounds.length-1;
+    PULL=Math.max(220,Math.round(W*0.55));
     base=-noteCur*W;
     x0=e.touches[0].clientX;y0=e.touches[0].clientY;
     drag=true;
@@ -1338,7 +1380,7 @@ $('nMic').addEventListener('click',function(){
     dxLast=dx;
     /* 양끝에서는 뻑뻑하게 */
     var d=dx;
-    if((noteCur===0&&dx>0)||(noteCur===n-1&&dx<0))d=dx*0.38;
+    if((noteCur===0&&dx>0)||(noteCur===n-1&&dx<0))d=dx*0.55;
     trackTo(base+d,false);
   },{passive:true});
 
@@ -1612,6 +1654,21 @@ var timer=null;
 function save(){clearTimeout(timer);timer=setTimeout(write,500)}
 
 var popEl=null;
+
+/* 공용 확인창 */
+function openConfirm(title,msg,quote,okText,onOk){
+  closePop();
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="pop"><h3>'+esc(title)+'</h3>'
+    +'<p>'+esc(msg)+'</p>'
+    +(quote?'<div class="qt">'+esc(quote)+'</div>':'')
+    +'<div class="row"><button class="no" id="pno">취소</button>'
+    +'<button class="dg" id="pok2">'+esc(okText)+'</button></div></div>';
+  document.body.appendChild(ov);popEl=ov;
+  $('pok2').addEventListener('click',function(){closePop();onOk()});
+  $('pno').addEventListener('click',closePop);
+  ov.addEventListener('click',function(e){if(e.target===ov)closePop()});
+}
 
 function openDel(t,arr,after){
   closePop();
