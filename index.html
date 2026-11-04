@@ -217,7 +217,9 @@ body.dragging{-webkit-user-select:none;user-select:none}
   padding:calc(env(safe-area-inset-top) + 10px) 8px 10px;
   border-bottom:1px solid var(--rule);background:var(--card)}
 #noteWin.float .nbar{padding:6px 6px;cursor:move;touch-action:none;background:#F5F8FA}
-.nbar .nt{flex:1;min-width:0;text-align:center;font-weight:700;font-size:1.1em;
+.nbL,.nbR{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px}
+.nbR{justify-content:flex-end}
+.nbar .nt{flex:0 1 auto;max-width:56%;min-width:0;text-align:center;font-weight:700;font-size:1.1em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
 #noteWin.float .nbar .nt{font-size:.9em}
 .nbtn{flex:none;width:42px;height:42px;display:grid;place-items:center;border-radius:10px;color:var(--muted)}
@@ -343,30 +345,34 @@ body.dragging{-webkit-user-select:none;user-select:none}
 
 <div id="noteWin" class="full hide">
   <div class="nbar" id="nBar">
-    <button class="nbtn" id="nBack" aria-label="닫기">
-      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
-    </button>
+    <div class="nbL">
+      <button class="nbtn" id="nBack" aria-label="닫기">
+        <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <button class="nbtn" id="nMic" aria-label="음성으로 입력">
+        <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/>
+          <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+    </div>
     <div class="nt" id="nTitle"></div>
-    <div class="npg hide" id="nPg"></div>
-    <button class="nbtn hide" id="nPgDel" aria-label="이 장 삭제">
-      <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
-    </button>
-    <button class="nbtn" id="nPdf" aria-label="PDF로 저장">
-      <svg viewBox="0 0 24 24"><path d="M12 3v10M8 10l4 4 4-4"/><path d="M4 17v3h16v-3"/></svg>
-    </button>
-    <button class="nbtn" id="nPop" aria-label="팝업으로">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="9" y="11" width="11" height="9" rx="1.5"/></svg>
-    </button>
-    <button class="nbtn hide" id="nFull" aria-label="전체화면으로">
-      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M4 15v5h5M20 9V4h-5"/></svg>
-    </button>
-    <button class="nbtn hide" id="nClose" aria-label="닫기">
-      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <button class="nbtn" id="nMic" aria-label="음성으로 입력">
-      <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/>
-        <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-    </button>
+    <div class="nbR">
+      <div class="npg hide" id="nPg"></div>
+      <button class="nbtn" id="nPdf" aria-label="PDF로 저장">
+        <svg viewBox="0 0 24 24"><path d="M12 3v10M8 10l4 4 4-4"/><path d="M4 17v3h16v-3"/></svg>
+      </button>
+      <button class="nbtn" id="nPop" aria-label="팝업으로">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><rect x="9" y="11" width="11" height="9" rx="1.5"/></svg>
+      </button>
+      <button class="nbtn hide" id="nFull" aria-label="전체화면으로">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M4 15v5h5M20 9V4h-5"/></svg>
+      </button>
+      <button class="nbtn hide" id="nClose" aria-label="닫기">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <button class="nbtn hide" id="nPgDel" aria-label="이 장 삭제">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+      </button>
+    </div>
   </div>
   <div class="nscroll" id="nScroll">
     <div class="ntrack" id="nTrack"></div>
@@ -1155,9 +1161,12 @@ function doDelPage(){
   if(n<=1)return;
   var text=noteBody();
   var next=text.slice(0,noteBounds[noteCur])+text.slice(noteBounds[noteCur+1]);
+  /* 글이 차지하는 장 수보다 아래로는 못 줄이므로 그만큼만 남긴다 */
+  notePages=1;
+  var fit=computeBounds(next).length-1;
+  notePages=Math.max(fit, n-1);
   var t=noteTarget();
   if(t){if(noteKind==='prj')t.body=next;else t.memo=next;write()}
-  notePages=Math.max(1,n-1);
   var go=Math.max(0,Math.min(noteCur,notePages-1));
   buildPages(next,go,null);
   toast('지웠습니다');
@@ -1270,21 +1279,17 @@ function recStart(){
 
   /* 받아적을 새 장을 맨 뒤에 만들고 그 맨 앞부터 적는다 */
   var n=noteBounds.length-1;        /* 지금 장 수 */
+  if(n>=40){toast('장을 더 만들 수 없습니다');return}
   var text=noteBody();
-  var per=perPageLines();
-  /* 마지막 장이 비어 있지 않으면 줄바꿈으로 장을 하나 띄운다 */
-  var last=pageText(text,n-1);
-  if(last.trim()){
-    if(text&&!/\n$/.test(text))text+='\n';
+  /* 마지막 장에 글이 있으면 줄바꿈으로 경계를 만들어 둔다 */
+  if(pageText(text,n-1).trim()&&!/\n$/.test(text)){
+    text+='\n';
     var t0=noteTarget();
     if(t0){if(noteKind==='prj')t0.body=text;else t0.memo=text;write()}
-    notePages=n+1;
-    buildPages(text,n,null);
-    goPage(n);
-  }else{
-    notePages=Math.max(notePages,n);
-    goPage(n-1);
   }
+  notePages=n+1;
+  buildPages(text,n,null);
+  goPage(n);
 
   var pg=$('nTrack').children[noteCur];
   recTA=pg?pg.querySelector('textarea'):null;
