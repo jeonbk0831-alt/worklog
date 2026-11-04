@@ -314,7 +314,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v2.7 · 2026.11.04</span>
+        <span class="ver">v2.8 · 2026.11.05</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -1202,6 +1202,7 @@ function reflow(ta){
   if(t){if(noteKind==='prj')t.body=text;else t.memo=text;save()}
   if(composing)return;
   var before=noteBounds.slice();
+  notePages=Math.max(notePages,before.length-1);   /* 만들어둔 장은 유지 */
   var after=computeBounds(text);
   var same=(before.length===after.length);
   if(same)for(var i=0;i<after.length;i++)if(before[i]!==after[i]){same=false;break}
@@ -1268,19 +1269,27 @@ function recStart(){
   if(noteMode!=='full'){toast('전체화면에서 녹음할 수 있습니다');return}
 
   /* 받아적을 새 장을 맨 뒤에 만들고 그 맨 앞부터 적는다 */
+  var n=noteBounds.length-1;        /* 지금 장 수 */
   var text=noteBody();
-  if(!/\n$/.test(text))text+='\n';
-  var t0=noteTarget();
-  if(t0){if(noteKind==='prj')t0.body=text;else t0.memo=text;write()}
-  var n=computeBounds(text).length-1;
-  notePages=n+1;
-  buildPages(text,n,null);
-  goPage(n);
+  var per=perPageLines();
+  /* 마지막 장이 비어 있지 않으면 줄바꿈으로 장을 하나 띄운다 */
+  var last=pageText(text,n-1);
+  if(last.trim()){
+    if(text&&!/\n$/.test(text))text+='\n';
+    var t0=noteTarget();
+    if(t0){if(noteKind==='prj')t0.body=text;else t0.memo=text;write()}
+    notePages=n+1;
+    buildPages(text,n,null);
+    goPage(n);
+  }else{
+    notePages=Math.max(notePages,n);
+    goPage(n-1);
+  }
 
   var pg=$('nTrack').children[noteCur];
   recTA=pg?pg.querySelector('textarea'):null;
   if(!recTA){toast('녹음할 자리를 만들지 못했습니다');return}
-  recPos=0;
+  recPos=recTA.value.length;
 
   try{rec=new SR()}catch(e){toast('음성 입력을 시작하지 못했습니다');return}
   rec.lang='ko-KR';
