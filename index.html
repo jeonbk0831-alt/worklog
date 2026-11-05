@@ -327,7 +327,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v3.0 · 2026.11.05</span>
+        <span class="ver">v3.1 · 2026.11.05</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -1114,6 +1114,7 @@ function computeBounds(text){
 function pageText(text,i){return (text||'').slice(noteBounds[i],noteBounds[i+1])}
 
 function buildPages(text,focusPage,caret){
+  noteW=$('nScroll').clientWidth||noteW;
   noteBounds=computeBounds(text);
   var n=noteBounds.length-1;
   var tr=$('nTrack');
@@ -1295,8 +1296,11 @@ function wirePages(){
         ta.selectionStart=ta.selectionEnd=ta.value.length;
         var p=+ta.getAttribute('data-p');
         var caret=noteBounds[p]+ta.value.length;
+        var n0=noteBounds.length;
         reflow(ta);
-        focusAt(caret);
+        /* 장 구성이 바뀌었을 때만 커서를 다시 잡는다 */
+        if(noteBounds.length!==n0||!ta.isConnected)focusAt(caret);
+        else{ta.focus();try{ta.setSelectionRange(ta.value.length,ta.value.length)}catch(err){}}
       });
     })(tas[i]);
   }
@@ -1310,6 +1314,7 @@ function layoutNote(){
 }
 
 /* ---------- 음성으로 입력 ---------- */
+var noteW=0;
 var rec=null, recOn=false, recTA=null, recPos=0, recIdle=null, recGot=false;
 
 function recSupport(){
@@ -2027,10 +2032,11 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('resize',fitView);
   window.visualViewport.addEventListener('scroll',fitView);
 }
-var noteW=0;
 window.addEventListener('resize',function(){
   fitView();
   if(!noteOpen)return;
+  var a=document.activeElement;
+  if(a&&a.tagName==='TEXTAREA'&&$('noteWin').contains(a))return;   /* 쓰는 중엔 건드리지 않음 */
   var w=$('nScroll').clientWidth;
   if(w&&w!==noteW){noteW=w;if(typeof layoutNote==='function')layoutNote()}
 });
