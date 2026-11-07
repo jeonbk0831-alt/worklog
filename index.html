@@ -327,7 +327,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v3.1 · 2026.11.05</span>
+        <span class="ver">v3.1 · 2026.11.07</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -1188,7 +1188,9 @@ function doDelPage(){
   var t=noteTarget();
   if(t){if(noteKind==='prj')t.body=next;else t.memo=next;write()}
   var go=Math.max(0,Math.min(noteCur,computeBounds(next).length-2));
+  rebuilding=true;
   buildPages(next,go,null);
+  rebuilding=false;
   toast('지웠습니다');
 }
 $('nPgDel').addEventListener('click',delNotePage);
@@ -1213,6 +1215,18 @@ function goPage(i){
 
 /* 맨 뒤에 빈 장을 하나 만든다 (줄바꿈으로 자리를 잡음) */
 function appendBlankPage(){
+  /* 쓰던 중이면 먼저 정리해서 장 구성을 맞춘다 */
+  clearTimeout(reflowT);
+  var a=document.activeElement;
+  if(a&&a.tagName==='TEXTAREA'&&$('nTrack').contains(a)){
+    var t0=noteBody(), p0=+a.getAttribute('data-p');
+    if(p0>=0&&p0+1<noteBounds.length){
+      var t1=t0.slice(0,noteBounds[p0])+a.value+t0.slice(noteBounds[p0+1]);
+      var tg=noteTarget();
+      if(tg){if(noteKind==='prj')tg.body=t1;else tg.memo=t1;write()}
+      noteBounds=computeBounds(t1);
+    }
+  }
   var n=noteBounds.length-1;
   if(n>=40){toast('장을 더 만들 수 없습니다');return -1}
   var text=noteBody();
@@ -1227,7 +1241,9 @@ function appendBlankPage(){
   text+=pad;
   var t=noteTarget();
   if(t){if(noteKind==='prj')t.body=text;else t.memo=text;write()}
+  rebuilding=true;
   buildPages(text,n,null);
+  rebuilding=false;
   goPage(n);
   return n;
 }
@@ -1239,20 +1255,73 @@ function addNotePage(){
 }
 
 /* 글을 고쳤을 때 전체를 다시 나눔 */
-function reflow(ta){
+var reflowT=null, rebuilding=false;
+
+/* 글자를 칠 때마다 저장만 하고, 장 다시 짜기는 손을 멈춘 뒤에 한다 */
+function reflow(ta,now){
+  if(rebuilding)return;
+  if(!ta.isConnected)return;
   var p=+ta.getAttribute('data-p');
+  if(!(p>=0)||p+1>=noteBounds.length)return;
   var full=noteBody();
   var text=full.slice(0,noteBounds[p])+ta.value+full.slice(noteBounds[p+1]);
   var caret=noteBounds[p]+ta.selectionStart;
   var t=noteTarget();
   if(t){if(noteKind==='prj')t.body=text;else t.memo=text;save()}
+
+  /* 이 장의 끝 위치를 바로 맞춰 둔다 (안 그러면 다음 글자에서 뒤가 겹침) */
+  var delta=ta.value.length-(noteBounds[p+1]-noteBounds[p]);
+  if(delta!==0){
+    for(var k=p+1;k<noteBounds.length;k++)noteBounds[k]+=delta;
+    noteBounds[noteBounds.length-1]=text.length;
+  }
+
   if(composing)return;
+  clearTimeout(reflowT);
+  if(now){doReflow(ta,text,caret);return}
+
+  /* 넘치지 않았으면 다시 짤 필요가 없다 */
+  if(noteMode==='full'){
+    if(!overflows(ta))return;
+    growPage(ta);          /* 넘친 만큼 칸을 늘려 글이 가려지지 않게 */
+  }else{
+    growPage(ta);
+  }
+
+  reflowT=setTimeout(function(){
+    if(!ta.isConnected)return;
+    if(document.activeElement!==ta)return;
+    var p2=+ta.getAttribute('data-p');
+    var f2=noteBody();
+    var t2=f2.slice(0,noteBounds[p2])+ta.value+f2.slice(noteBounds[p2+1]);
+    doReflow(ta,t2,noteBounds[p2]+ta.selectionStart);
+  },420);
+}
+
+/* 칸 높이를 글에 맞춘다 */
+function growPage(ta){
+  var base=(noteMode==='full')?perPageLines()*noteLH():0;
+  ta.style.height='auto';
+  ta.style.height=Math.max(base,ta.scrollHeight)+'px';
+}
+
+/* 이 장의 글이 한 장을 넘겼는가 */
+function overflows(ta){
+  var limit=perPageLines()*noteLH();
+  return ta.scrollHeight>limit+1;
+}
+
+function doReflow(ta,text,caret){
   var before=noteBounds.slice();
   var after=computeBounds(text);
   var same=(before.length===after.length);
   if(same)for(var i=0;i<after.length;i++)if(before[i]!==after[i]){same=false;break}
   if(same)return;
+  var hadFocus=(document.activeElement===ta);
+  rebuilding=true;
   buildPages(text,null,caret);
+  rebuilding=false;
+  if(hadFocus)focusAt(caret);
 }
 
 /* 전체 글 기준 위치에 커서를 놓고 키보드를 다시 띄운다 */
@@ -1276,6 +1345,7 @@ function wirePages(){
       ta.addEventListener('input',function(){reflow(ta)});
       ta.addEventListener('compositionstart',function(){composing=true});
       ta.addEventListener('compositionend',function(){composing=false;reflow(ta)});
+      ta.addEventListener('blur',function(){if(!rebuilding&&ta.isConnected)reflow(ta,true)});
       ta.addEventListener('focus',function(){
         var p=+ta.getAttribute('data-p');
         if(p!==noteCur){noteCur=p;slidePage(true);paintPg()}
@@ -1297,7 +1367,7 @@ function wirePages(){
         var p=+ta.getAttribute('data-p');
         var caret=noteBounds[p]+ta.value.length;
         var n0=noteBounds.length;
-        reflow(ta);
+        reflow(ta,true);
         /* 장 구성이 바뀌었을 때만 커서를 다시 잡는다 */
         if(noteBounds.length!==n0||!ta.isConnected)focusAt(caret);
         else{ta.focus();try{ta.setSelectionRange(ta.value.length,ta.value.length)}catch(err){}}
