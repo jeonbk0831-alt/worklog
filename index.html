@@ -332,7 +332,7 @@ body.dragging{-webkit-user-select:none;user-select:none}
         <span><i class="dot" style="background:var(--meet)"></i>회의</span>
         <span><i class="dot" style="background:var(--due-dot)"></i>업무</span>
         <span><i class="dot" style="background:var(--vac)"></i>휴가</span>
-        <span class="ver">v3.1 · 2026.11.09</span>
+        <span class="ver">v3.2 · 2026.11.09</span>
       </div>
       <div class="tools">
         <button id="expBtn">백업 저장</button>
@@ -445,24 +445,39 @@ if(!canSave)$('warn').classList.remove('hide');
 
 var mem=null;
 
-/* 폭을 잘못 재어 글자 수대로 똑같이 토막 난 노트를 원래대로 되돌린다.
+/* 폭을 잘못 재어 글자 수대로 토막 난 노트를 되돌린다.
    사람이 나눈 장은 길이가 제각각이라 걸리지 않는다 */
 function unsplit(raw){
   if(!raw||raw.indexOf('\f')<0)return raw||'';
-  var a=raw.split('\f'), i, L=0;
+  var a=raw.split('\f'), i, lo=1e9, hi=0;
   if(a.length<3)return raw;
   for(i=0;i<a.length-1;i++){
-    if(!a[i].trim())return raw;                 /* 일부러 만든 빈 장이 있으면 손대지 않는다 */
-    if(a[i].length>L)L=a[i].length;
+    if(!a[i].trim())return raw;                  /* 일부러 만든 빈 장이 있으면 손대지 않는다 */
+    if(a[i].length<lo)lo=a[i].length;
+    if(a[i].length>hi)hi=a[i].length;
   }
-  if(L>200)return raw;                          /* 장마다 글이 제법 있으면 정상이다 */
-  for(i=0;i<a.length-1;i++)if(L-a[i].length>1)return raw;   /* 길이가 들쭉날쭉하면 정상 */
-  var out='';
-  for(i=0;i<a.length;i++){
-    out+=a[i];
-    if(i<a.length-1&&a[i].length<L)out+='\n';   /* 잘릴 때 사라진 줄바꿈을 되살린다 */
+  if(hi>80||hi-lo>4)return raw;                  /* 길이가 들쭉날쭉하면 사람이 나눈 것이다 */
+  var out=a[0];
+  for(i=1;i<a.length;i++){
+    var s=a[i], n=s.indexOf('\n');
+    if(a[i-1].length<hi)out+='\n';               /* 잘릴 때 사라진 줄바꿈을 되살린다 */
+    else if(n>=0&&n<=2)s=s.slice(0,n)+s.slice(n+1);  /* 이어 붙일 때 끼어든 줄바꿈을 걷어낸다 */
+    out+=s;
   }
   return out;
+}
+
+/* 여러 번 겹쳐 쪼개지며 줄바꿈까지 끼어든 노트는 글자 그대로 되돌린다.
+   글자가 하나라도 다르면(그 사이 고쳐 썼다면) 손대지 않는다 */
+var RESTORE=[{id:'P1787882031315oyb4',text:"▪️4차 실정보고\n  1. 식재부분 정리\n    - 입구부 배롱나무 반영\n    - 잔디구간 지정\n    - 식재계획도 전면 재작성\n  2. 시설물\n    - PC콘크리트 추가\n    -  풋살장 골대 추가\n\n▪️지시사항\n  - PC콘크리트 구매 및 설치(바로 발주 필요, 개수 확인)\n  - 풋살장 골대 추가\n  - 농장수목 확인\n  - 수몰마을 자료 전송 및 제작 요청\n\n▪️내가할일\n  - 안전난간 색상 지정(업체 사진 요청)\n  - 풋살장 골대 규격 알아보기\n  - 현장자문 시행\n  - 공사금액 검토(당초, 현재, 변경시, 재정집행)\n  - 울타리 업체 통화(날짜 확인, pc콘크리트 하차, 알아서 설치 가능? 어차피 장비쓰니까)\n  - 배롱나무, 팽나무 등 식재 보고자료 제출, 팽나무도\n  - 2차 변경시 이윤, 산안비 재조정 필요\n\n* 식재계획 전면 재작성\n    - 잔디구간 확인\n    - 배롱나무 배치\n    - 팽나무 수량 변경\n    - 수크령 추가식재\n    - 기타 수목배치 확인"}];
+function restoreKnown(p){
+  if(!p.body||p.body.indexOf('\f')<0)return;
+  for(var i=0;i<RESTORE.length;i++){
+    if(RESTORE[i].id!==p.id)continue;
+    if(p.body.replace(/\s+/g,'')!==RESTORE[i].text.replace(/\s+/g,''))return;
+    p.body=RESTORE[i].text;
+    return;
+  }
 }
 
 function fix(d){
@@ -486,6 +501,7 @@ function fix(d){
   delete d.ptasks;
   d.projects.forEach(function(p){
     if(typeof p.body!=='string')p.body='';
+    restoreKnown(p);
     p.body=unsplit(p.body);
   });
   d.tasks.forEach(function(t){if(typeof t.memo==='string')t.memo=unsplit(t.memo)});
